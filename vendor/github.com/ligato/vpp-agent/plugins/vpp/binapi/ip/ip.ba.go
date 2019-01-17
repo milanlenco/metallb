@@ -1671,6 +1671,82 @@ func (*SwInterfaceIP6EnableDisableReply) GetMessageType() api.MessageType {
 	return api.ReplyMessage
 }
 
+// SwInterfaceIP6SetLinkLocalAddress represents the VPP binary API message 'sw_interface_ip6_set_link_local_address'.
+//
+//            "sw_interface_ip6_set_link_local_address",
+//            [
+//                "u16",
+//                "_vl_msg_id"
+//            ],
+//            [
+//                "u32",
+//                "client_index"
+//            ],
+//            [
+//                "u32",
+//                "context"
+//            ],
+//            [
+//                "u32",
+//                "sw_if_index"
+//            ],
+//            [
+//                "u8",
+//                "address",
+//                16
+//            ],
+//            {
+//                "crc": "0xd73bf1ab"
+//            }
+//
+type SwInterfaceIP6SetLinkLocalAddress struct {
+	SwIfIndex uint32
+	Address   []byte `struc:"[16]byte"`
+}
+
+func (*SwInterfaceIP6SetLinkLocalAddress) GetMessageName() string {
+	return "sw_interface_ip6_set_link_local_address"
+}
+func (*SwInterfaceIP6SetLinkLocalAddress) GetCrcString() string {
+	return "d73bf1ab"
+}
+func (*SwInterfaceIP6SetLinkLocalAddress) GetMessageType() api.MessageType {
+	return api.RequestMessage
+}
+
+// SwInterfaceIP6SetLinkLocalAddressReply represents the VPP binary API message 'sw_interface_ip6_set_link_local_address_reply'.
+//
+//            "sw_interface_ip6_set_link_local_address_reply",
+//            [
+//                "u16",
+//                "_vl_msg_id"
+//            ],
+//            [
+//                "u32",
+//                "context"
+//            ],
+//            [
+//                "i32",
+//                "retval"
+//            ],
+//            {
+//                "crc": "0xe8d4e804"
+//            }
+//
+type SwInterfaceIP6SetLinkLocalAddressReply struct {
+	Retval int32
+}
+
+func (*SwInterfaceIP6SetLinkLocalAddressReply) GetMessageName() string {
+	return "sw_interface_ip6_set_link_local_address_reply"
+}
+func (*SwInterfaceIP6SetLinkLocalAddressReply) GetCrcString() string {
+	return "e8d4e804"
+}
+func (*SwInterfaceIP6SetLinkLocalAddressReply) GetMessageType() api.MessageType {
+	return api.ReplyMessage
+}
+
 // IPAddDelRoute represents the VPP binary API message 'ip_add_del_route'.
 //
 //            "ip_add_del_route",
@@ -2821,75 +2897,6 @@ func (*IPContainerProxyAddDelReply) GetCrcString() string {
 	return "e8d4e804"
 }
 func (*IPContainerProxyAddDelReply) GetMessageType() api.MessageType {
-	return api.ReplyMessage
-}
-
-// IPContainerProxyDump represents the VPP binary API message 'ip_container_proxy_dump'.
-//
-//            "ip_container_proxy_dump",
-//            [
-//                "u16",
-//                "_vl_msg_id"
-//            ],
-//            [
-//                "u32",
-//                "client_index"
-//            ],
-//            [
-//                "u32",
-//                "context"
-//            ],
-//            {
-//                "crc": "0x51077d14"
-//            }
-//
-type IPContainerProxyDump struct{}
-
-func (*IPContainerProxyDump) GetMessageName() string {
-	return "ip_container_proxy_dump"
-}
-func (*IPContainerProxyDump) GetCrcString() string {
-	return "51077d14"
-}
-func (*IPContainerProxyDump) GetMessageType() api.MessageType {
-	return api.RequestMessage
-}
-
-// IPContainerProxyDetails represents the VPP binary API message 'ip_container_proxy_details'.
-//
-//            "ip_container_proxy_details",
-//            [
-//                "u16",
-//                "_vl_msg_id"
-//            ],
-//            [
-//                "u32",
-//                "context"
-//            ],
-//            [
-//                "u32",
-//                "sw_if_index"
-//            ],
-//            [
-//                "vl_api_prefix_t",
-//                "prefix"
-//            ],
-//            {
-//                "crc": "0xd528df63"
-//            }
-//
-type IPContainerProxyDetails struct {
-	SwIfIndex uint32
-	Prefix    Prefix
-}
-
-func (*IPContainerProxyDetails) GetMessageName() string {
-	return "ip_container_proxy_details"
-}
-func (*IPContainerProxyDetails) GetCrcString() string {
-	return "d528df63"
-}
-func (*IPContainerProxyDetails) GetMessageType() api.MessageType {
 	return api.ReplyMessage
 }
 
@@ -4553,7 +4560,6 @@ type Services interface {
 	DumpIP6Mfib(*IP6MfibDump) (*IP6MfibDetails, error)
 	DumpIP6ndProxy(*IP6ndProxyDump) (*IP6ndProxyDetails, error)
 	DumpIPAddress(*IPAddressDump) (*IPAddressDetails, error)
-	DumpIPContainerProxy(*IPContainerProxyDump) (*IPContainerProxyDetails, error)
 	DumpIP(*IPDump) (*IPDetails, error)
 	DumpIPFib(*IPFibDump) (*IPFibDetails, error)
 	DumpIPMfib(*IPMfibDump) (*IPMfibDetails, error)
@@ -4586,6 +4592,7 @@ type Services interface {
 	SetArpNeighborLimit(*SetArpNeighborLimit) (*SetArpNeighborLimitReply, error)
 	SetIPFlowHash(*SetIPFlowHash) (*SetIPFlowHashReply, error)
 	SwInterfaceIP6EnableDisable(*SwInterfaceIP6EnableDisable) (*SwInterfaceIP6EnableDisableReply, error)
+	SwInterfaceIP6SetLinkLocalAddress(*SwInterfaceIP6SetLinkLocalAddress) (*SwInterfaceIP6SetLinkLocalAddressReply, error)
 	SwInterfaceIP6ndRaConfig(*SwInterfaceIP6ndRaConfig) (*SwInterfaceIP6ndRaConfigReply, error)
 	SwInterfaceIP6ndRaPrefix(*SwInterfaceIP6ndRaPrefix) (*SwInterfaceIP6ndRaPrefixReply, error)
 	WantIP4ArpEvents(*WantIP4ArpEvents) (*WantIP4ArpEventsReply, error)
@@ -4618,6 +4625,8 @@ func init() {
 	api.RegisterMessage((*IP6ndSendRouterSolicitationReply)(nil), "ip.IP6ndSendRouterSolicitationReply")
 	api.RegisterMessage((*SwInterfaceIP6EnableDisable)(nil), "ip.SwInterfaceIP6EnableDisable")
 	api.RegisterMessage((*SwInterfaceIP6EnableDisableReply)(nil), "ip.SwInterfaceIP6EnableDisableReply")
+	api.RegisterMessage((*SwInterfaceIP6SetLinkLocalAddress)(nil), "ip.SwInterfaceIP6SetLinkLocalAddress")
+	api.RegisterMessage((*SwInterfaceIP6SetLinkLocalAddressReply)(nil), "ip.SwInterfaceIP6SetLinkLocalAddressReply")
 	api.RegisterMessage((*IPAddDelRoute)(nil), "ip.IPAddDelRoute")
 	api.RegisterMessage((*IPAddDelRouteReply)(nil), "ip.IPAddDelRouteReply")
 	api.RegisterMessage((*IPMrouteAddDel)(nil), "ip.IPMrouteAddDel")
@@ -4640,8 +4649,6 @@ func init() {
 	api.RegisterMessage((*IPPuntRedirectReply)(nil), "ip.IPPuntRedirectReply")
 	api.RegisterMessage((*IPContainerProxyAddDel)(nil), "ip.IPContainerProxyAddDel")
 	api.RegisterMessage((*IPContainerProxyAddDelReply)(nil), "ip.IPContainerProxyAddDelReply")
-	api.RegisterMessage((*IPContainerProxyDump)(nil), "ip.IPContainerProxyDump")
-	api.RegisterMessage((*IPContainerProxyDetails)(nil), "ip.IPContainerProxyDetails")
 	api.RegisterMessage((*IPSourceAndPortRangeCheckAddDel)(nil), "ip.IPSourceAndPortRangeCheckAddDel")
 	api.RegisterMessage((*IPSourceAndPortRangeCheckAddDelReply)(nil), "ip.IPSourceAndPortRangeCheckAddDelReply")
 	api.RegisterMessage((*IPSourceAndPortRangeCheckInterfaceAddDel)(nil), "ip.IPSourceAndPortRangeCheckInterfaceAddDel")

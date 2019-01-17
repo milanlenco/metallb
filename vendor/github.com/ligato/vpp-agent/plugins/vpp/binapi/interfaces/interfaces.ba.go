@@ -696,7 +696,7 @@ func (*WantInterfaceEventsReply) GetMessageType() api.MessageType {
 //                "link_duplex"
 //            ],
 //            [
-//                "u32",
+//                "u8",
 //                "link_speed"
 //            ],
 //            [
@@ -792,7 +792,7 @@ func (*WantInterfaceEventsReply) GetMessageType() api.MessageType {
 //                "i_sid"
 //            ],
 //            {
-//                "crc": "0xe4ee7eb6"
+//                "crc": "0x09b4b510"
 //            }
 //
 type SwInterfaceDetails struct {
@@ -804,7 +804,7 @@ type SwInterfaceDetails struct {
 	AdminUpDown       uint8
 	LinkUpDown        uint8
 	LinkDuplex        uint8
-	LinkSpeed         uint32
+	LinkSpeed         uint8
 	LinkMtu           uint16
 	Mtu               []uint32 `struc:"[4]uint32"`
 	SubID             uint32
@@ -833,7 +833,7 @@ func (*SwInterfaceDetails) GetMessageName() string {
 	return "sw_interface_details"
 }
 func (*SwInterfaceDetails) GetCrcString() string {
-	return "e4ee7eb6"
+	return "09b4b510"
 }
 func (*SwInterfaceDetails) GetMessageType() api.MessageType {
 	return api.ReplyMessage
