@@ -26,12 +26,16 @@ Create ${type} ${name} On ${node} With IP ${ip}, MAC ${mac}, Key ${key} And ${so
     ${type}=   Set Variable if    "${type}"=="Master"    true    false
     ${out}=    Put Memif Interface With IP    ${node}    ${name}   ${mac}    ${type}   ${key}    ${ip}    socket=${socket}
 
+Create ${type} ${name} On ${node} With Prefixed IP ${ip}/${prefix}, MAC ${mac}, Key ${key} And ${socket} Socket
+    ${type}=   Set Variable if    "${type}"=="Master"    true    false
+    ${out}=    Put Memif Interface With IP    ${node}    ${name}   ${mac}    ${type}   ${key}    ${ip}    prefix=${prefix}    socket=${socket}
+
 Create ${type} ${name} On ${node} With Vrf ${vrf}, IP ${ip}, MAC ${mac}, Key ${key} And ${socket} Socket
     ${type}=   Set Variable if    "${type}"=="Master"    true    false
     ${out}=    Put Memif Interface With IP    ${node}    ${name}   ${mac}    ${type}   ${key}    ${ip}    socket=${socket}    vrf=${vrf}
 
-Create Tap Interface ${name} On ${node} With Vrf ${vrf}, IP ${ip}, MAC ${mac} And HostIfName ${host_if_name}
-    ${out}=    Put TAP Interface With IP    ${node}    ${name}   ${mac}    ${ip}    ${host_if_name}    vrf=${vrf}
+Create Tapv2 Interface ${name} On ${node} With Vrf ${vrf}, IP ${ip}, MAC ${mac} And HostIfName ${host_if_name}
+    ${out}=    Put TAPv2 Interface With IP    ${node}    ${name}   ${mac}    ${ip}    ${host_if_name}    vrf=${vrf}
 
 Create Bridge Domain ${name} with Autolearn On ${node} With Interfaces ${interfaces}
     @{ints}=    Split String   ${interfaces}    separator=,${space}
@@ -50,7 +54,13 @@ Create Route On ${node} With IP ${ip}/${prefix} With Next Hop ${next_hop} And Vr
 Create Route On ${node} With IP ${ip}/${prefix} With Next Hop VRF ${next_hop_vrf} From Vrf Id ${id} And Type ${type}
     ${data}=        OperatingSystem.Get File    ${CURDIR}/../../robot/resources/route_to_other_vrf.json
     ${data}=        replace variables           ${data}
-    ${uri}=         Set Variable                /vnf-agent/${node}/config/vpp/${AGENT_VER}/route/vrf/${id}/dst/${ip}/${prefix}/gw/
+    ${uri}=         Set Variable                /vnf-agent/${node}/config/vpp/${AGENT_VER}/route/vrf/${id}/dst/${ip}/${prefix}/gw
+    ${out}=         Put Json    ${uri}   ${data}
+
+Create Route On ${node} With IP ${ip}/${prefix} With Vrf Id ${id} With Interface ${interface} And Next Hop ${next_hop}
+    ${data}=        OperatingSystem.Get File    ${CURDIR}/../../robot/resources/static_route_with_interface.json
+    ${data}=        replace variables           ${data}
+    ${uri}=         Set Variable                /vnf-agent/${node}/config/vpp/${AGENT_VER}/route/vrf/${id}/dst/${ip}/${prefix}/gw/${next_hop}
     ${out}=         Put Json    ${uri}   ${data}
 
 Create DNat On ${node} With Name ${name} Local IP ${local_ip} Local Port ${local_port} External IP ${ext_ip} External Interface ${ext_int} External Port ${ext_port} Vrf Id ${id}

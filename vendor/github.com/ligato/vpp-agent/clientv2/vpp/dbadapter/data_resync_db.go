@@ -15,9 +15,12 @@
 package dbadapter
 
 import (
+	"context"
+
 	"github.com/ligato/cn-infra/db/keyval"
 	"github.com/ligato/vpp-agent/pkg/models"
 
+	abf "github.com/ligato/vpp-agent/api/models/vpp/abf"
 	acl "github.com/ligato/vpp-agent/api/models/vpp/acl"
 	intf "github.com/ligato/vpp-agent/api/models/vpp/interfaces"
 	ipsec "github.com/ligato/vpp-agent/api/models/vpp/ipsec"
@@ -26,7 +29,7 @@ import (
 	nat "github.com/ligato/vpp-agent/api/models/vpp/nat"
 	punt "github.com/ligato/vpp-agent/api/models/vpp/punt"
 	stn "github.com/ligato/vpp-agent/api/models/vpp/stn"
-	"github.com/ligato/vpp-agent/clientv2/vpp"
+	vppclient "github.com/ligato/vpp-agent/clientv2/vpp"
 )
 
 // NewDataResyncDSL returns a new instance of DataResyncDSL which implements
@@ -63,6 +66,15 @@ func (dsl *DataResyncDSL) ACL(val *acl.ACL) vppclient.DataResyncDSL {
 	return dsl
 }
 
+// ABF adds ACL-based forwarding to the RESYNC request.
+func (dsl *DataResyncDSL) ABF(val *abf.ABF) vppclient.DataResyncDSL {
+	key := models.Key(val)
+	dsl.txn.Put(key, val)
+	dsl.txnKeys = append(dsl.txnKeys, key)
+
+	return dsl
+}
+
 // BD adds Bridge Domain to the RESYNC request.
 func (dsl *DataResyncDSL) BD(val *l2.BridgeDomain) vppclient.DataResyncDSL {
 	key := l2.BridgeDomainKey(val.Name)
@@ -75,6 +87,15 @@ func (dsl *DataResyncDSL) BD(val *l2.BridgeDomain) vppclient.DataResyncDSL {
 // BDFIB adds Bridge Domain to the RESYNC request.
 func (dsl *DataResyncDSL) BDFIB(val *l2.FIBEntry) vppclient.DataResyncDSL {
 	key := l2.FIBKey(val.BridgeDomain, val.PhysAddress)
+	dsl.txn.Put(key, val)
+	dsl.txnKeys = append(dsl.txnKeys, key)
+
+	return dsl
+}
+
+// VrfTable adds VRF table to the RESYNC request.
+func (dsl *DataResyncDSL) VrfTable(val *l3.VrfTable) vppclient.DataResyncDSL {
+	key := l3.VrfTableKey(val.Id, val.Protocol)
 	dsl.txn.Put(key, val)
 	dsl.txnKeys = append(dsl.txnKeys, key)
 
@@ -189,6 +210,15 @@ func (dsl *DataResyncDSL) PuntToHost(val *punt.ToHost) vppclient.DataResyncDSL {
 	return dsl
 }
 
+// PuntException adds request to create or update exception to punt specific packets.
+func (dsl *DataResyncDSL) PuntException(val *punt.Exception) vppclient.DataResyncDSL {
+	key := models.Key(val)
+	dsl.txn.Put(key, val)
+	dsl.txnKeys = append(dsl.txnKeys, key)
+
+	return dsl
+}
+
 // AppendKeys is a helper function that fills the keySet <keys> with values
 // pointed to by the iterator <it>.
 func appendKeys(keys *keySet, it keyval.ProtoKeyIterator) {
@@ -253,7 +283,7 @@ func (dsl *DataResyncDSL) Send() vppclient.Reply {
 		break
 	}
 
-	err := dsl.txn.Commit()
+	err := dsl.txn.Commit(context.Background())
 
 	return &Reply{err: err}
 }

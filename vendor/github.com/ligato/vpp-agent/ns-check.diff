@@ -1,0 +1,30 @@
+diff --git a/plugins/kvscheduler/descriptor_handler.go b/plugins/kvscheduler/descriptor_handler.go
+index 3038b65..3aeca77 100644
+--- a/plugins/kvscheduler/descriptor_handler.go
++++ b/plugins/kvscheduler/descriptor_handler.go
+@@ -3,8 +3,15 @@ package kvscheduler
+ import (
+ 	"github.com/gogo/protobuf/proto"
+ 	kvs "github.com/ligato/vpp-agent/plugins/kvscheduler/api"
++	"github.com/vishvananda/netns"
+ )
+ 
++var defaultNs netns.NsHandle
++
++func init() {
++	defaultNs, _ = netns.Get()
++}
++
+ // descriptorHandler handles access to descriptor methods (callbacks).
+ // For callback not provided, a default return value is returned.
+ type descriptorHandler struct {
+@@ -133,5 +140,9 @@ func (h *descriptorHandler) retrieve(correlate []kvs.KVWithMetadata) (values []k
+ 	}
+ 	defer trackDescMethod(h.descriptor.Name, "Retrieve")()
+ 	values, err = h.descriptor.Retrieve(correlate)
++	ns, nsErr := netns.Get()
++	if nsErr == nil && defaultNs != -1 && !defaultNs.Equal(ns) {
++		// log error
++	}
+ 	return values, true, err
+ }

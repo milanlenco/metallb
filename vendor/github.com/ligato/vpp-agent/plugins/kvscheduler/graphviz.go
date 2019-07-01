@@ -2,10 +2,9 @@ package kvscheduler
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
-	//"log"
-	"errors"
 	"net/http"
 	"os"
 	"os/exec"
@@ -15,8 +14,10 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	kvs "github.com/ligato/vpp-agent/plugins/kvscheduler/api"
 	"github.com/ligato/vpp-agent/plugins/kvscheduler/internal/graph"
+	"github.com/ligato/vpp-agent/plugins/kvscheduler/internal/utils"
 	"github.com/unrolled/render"
 )
 
@@ -27,16 +28,20 @@ const (
 )
 
 type depNode struct {
-	node  *dotNode
-	label string
+	node      *dotNode
+	label     string
+	satisfied bool
 }
 
 func (s *Scheduler) dotGraphHandler(formatter *render.Render) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		args := req.URL.Query()
+		s.txnLock.Lock()
+		defer s.txnLock.Unlock()
 		graphRead := s.graph.Read()
 		defer graphRead.Release()
 
+		var txn *kvs.RecordedTxn
 		timestamp := time.Now()
 
 		// parse optional *txn* argument
@@ -47,7 +52,7 @@ func (s *Scheduler) dotGraphHandler(formatter *render.Render) http.HandlerFunc {
 				return
 			}
 
-			txn := s.GetRecordedTransaction(txnSeqNum)
+			txn = s.GetRecordedTransaction(txnSeqNum)
 			if txn == nil {
 				err := errors.New("transaction with such sequence number is not recorded")
 				s.logError(formatter.JSON(w, http.StatusNotFound, errorString{err.Error()}))
@@ -57,13 +62,16 @@ func (s *Scheduler) dotGraphHandler(formatter *render.Render) http.HandlerFunc {
 		}
 
 		graphSnapshot := graphRead.GetSnapshot(timestamp)
-		output, err := s.renderDotOutput(graphSnapshot, timestamp)
+		output, err := s.renderDotOutput(graphSnapshot, txn)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		//fmt.Printf("DOT:\n%s\n", output)
+		if format := req.FormValue("format"); format == "dot" {
+			w.Write(output)
+			return
+		}
 
 		img, err := dotToImage("", "svg", output)
 		if err != nil {
@@ -71,25 +79,39 @@ func (s *Scheduler) dotGraphHandler(formatter *render.Render) http.HandlerFunc {
 			return
 		}
 
-		//log.Println("serving file:", img)
+		s.Log.Debug("serving graph image from:", img)
 		http.ServeFile(w, req, img)
 	}
 }
 
-func (s *Scheduler) renderDotOutput(graphNodes []*graph.RecordedNode, timestamp time.Time) ([]byte, error) {
-	cluster := NewDotCluster("focus")
+func (s *Scheduler) renderDotOutput(graphNodes []*graph.RecordedNode, txn *kvs.RecordedTxn) ([]byte, error) {
+	title := fmt.Sprintf("%d keys", len(graphNodes))
+	updatedKeys := utils.NewMapBasedKeySet()
+	graphTimestamp := time.Now()
+	if txn != nil {
+		graphTimestamp = txn.Stop
+		title += fmt.Sprintf(" - SeqNum: %d (%s)", txn.SeqNum, graphTimestamp.Format(time.RFC822))
+		for _, op := range txn.Executed {
+			updatedKeys.Add(op.Key)
+		}
+	} else {
+		title += " - current"
+	}
+
+	cluster := NewDotCluster("nodes")
 	cluster.Attrs = dotAttrs{
 		"bgcolor":   "white",
-		"label":     "",
+		"label":     title,
 		"labelloc":  "t",
 		"labeljust": "c",
-		"fontsize":  "18",
+		"fontsize":  "15",
 		"tooltip":   "",
 	}
-	/*if focusPkg != nil {
-		cluster.Attrs["bgcolor"] = "#e6ecfa"
-		cluster.Attrs["label"] = focusPkg.Name
-	}*/
+
+	// TODO: how to link transaction recording inside of the main cluster title (SeqNum: %d)?
+	//if txn != nil {
+	//	cluster.Attrs["href"] = fmt.Sprintf(txnHistoryURL + "?seq-num=%d", txn.SeqNum)
+	//}
 
 	var (
 		nodes []*dotNode
@@ -110,19 +132,25 @@ func (s *Scheduler) renderDotOutput(graphNodes []*graph.RecordedNode, timestamp 
 
 	var processGraphNode = func(graphNode *graph.RecordedNode) *dotNode {
 		key := graphNode.Key
-
 		if n, ok := nodeMap[key]; ok {
 			return n
 		}
-		attrs := make(dotAttrs)
 
-		//fmt.Printf("- key: %q\n", key)
+		attrs := make(dotAttrs)
+		attrs["pad"] = "0.01"
+		attrs["margin"] = "0.01"
+		attrs["href"] = fmt.Sprintf(keyTimelineURL+"?key=%s&amp;time=%d", key, graphTimestamp.UnixNano())
+
+		if updatedKeys.Has(key) {
+			attrs["penwidth"] = "2"
+			attrs["color"] = "Gold"
+		}
 
 		c := cluster
 
-		var descriptorName string
 		label := graphNode.Label
-		if descriptorFlag := graphNode.GetFlag(DescriptorFlagName); descriptorFlag != nil {
+		var descriptorName string
+		if descriptorFlag := graphNode.GetFlag(DescriptorFlagIndex); descriptorFlag != nil {
 			descriptorName = descriptorFlag.GetValue()
 		} else {
 			// for missing dependencies
@@ -143,45 +171,52 @@ func (s *Scheduler) renderDotOutput(graphNodes []*graph.RecordedNode, timestamp 
 
 			if _, ok := c.Clusters[descriptorName]; !ok {
 				c.Clusters[descriptorName] = &dotCluster{
-					ID:       key,
+					ID:       descriptorName,
 					Clusters: make(map[string]*dotCluster),
 					Attrs: dotAttrs{
 						"penwidth":  "0.8",
 						"fontsize":  "16",
-						"label":     fmt.Sprintf("[ %s ]", descriptorName),
+						"label":     fmt.Sprintf("< %s >", descriptorName),
 						"style":     "filled",
 						"fillcolor": "#e6ecfa",
-						//"fontname":  "bold",
-						//"rank":      "sink",
 					},
 				}
 			}
 			c = c.Clusters[descriptorName]
 		}
 
-		valueState := kvs.ValueState_MISSING // missing dependencies
-		stateFlag := graphNode.GetFlag(ValueStateFlagName)
+		var (
+			dashedStyle bool
+			valueState  kvs.ValueState
+		)
+		isDerived := graphNode.GetFlag(DerivedFlagIndex) != nil
+		stateFlag := graphNode.GetFlag(ValueStateFlagIndex)
 		if stateFlag != nil {
 			valueState = stateFlag.(*ValueStateFlag).valueState
 		}
+
+		// set colors
 		switch valueState {
+		case kvs.ValueState_NONEXISTENT:
+			attrs["fontcolor"] = "White"
+			attrs["fillcolor"] = "Black"
 		case kvs.ValueState_MISSING:
 			attrs["fillcolor"] = "Dimgray"
-			attrs["style"] = "dashed,filled"
+			dashedStyle = true
 		case kvs.ValueState_UNIMPLEMENTED:
 			attrs["fillcolor"] = "Darkkhaki"
-			attrs["style"] = "dashed,filled"
+			dashedStyle = true
 		case kvs.ValueState_REMOVED:
 			attrs["fontcolor"] = "White"
 			attrs["fillcolor"] = "Black"
-			attrs["style"] = "dashed,filled"
+			dashedStyle = true
 		// case kvs.ValueState_CONFIGURED // leave default
-		case kvs.ValueState_RETRIEVED:
+		case kvs.ValueState_OBTAINED:
 			attrs["fillcolor"] = "LightCyan"
-		case kvs.ValueState_FOUND:
+		case kvs.ValueState_DISCOVERED:
 			attrs["fillcolor"] = "Lime"
 		case kvs.ValueState_PENDING:
-			attrs["style"] = "dashed,filled"
+			dashedStyle = true
 			attrs["fillcolor"] = "Pink"
 		case kvs.ValueState_INVALID:
 			attrs["fontcolor"] = "White"
@@ -191,6 +226,27 @@ func (s *Scheduler) renderDotOutput(graphNodes []*graph.RecordedNode, timestamp 
 		case kvs.ValueState_RETRYING:
 			attrs["fillcolor"] = "Deeppink"
 		}
+		if isDerived && ((valueState == kvs.ValueState_CONFIGURED) ||
+			(valueState == kvs.ValueState_OBTAINED) ||
+			(valueState == kvs.ValueState_DISCOVERED)) {
+			attrs["fillcolor"] = "LightYellow"
+			attrs["color"] = "bisque4"
+		}
+
+		// set style
+		attrs["style"] = "filled"
+		if isDerived {
+			attrs["style"] += ",rounded"
+		}
+		if dashedStyle {
+			attrs["style"] += ",dashed"
+		}
+
+		value := graphNode.Value
+		if rec, ok := value.(*utils.RecordedProtoMessage); ok {
+			value = rec.Message
+		}
+		attrs["tooltip"] = fmt.Sprintf("[%s] %s\n-----\n%s", valueState, key, proto.MarshalTextString(value))
 
 		n := &dotNode{
 			ID:    key,
@@ -211,52 +267,55 @@ func (s *Scheduler) renderDotOutput(graphNodes []*graph.RecordedNode, timestamp 
 
 	for _, graphNode := range graphNodes {
 		n := processGraphNode(graphNode)
+		targets := graphNode.Targets
 
-		derived := graphNode.Targets.GetTargetsForRelation(DerivesRelation)
-		if derived != nil {
-			for _, target := range derived.Targets {
-				for _, dKey := range target.MatchingKeys.Iterate() {
-					dn := processGraphNode(getGraphNode(dKey))
-					dn.Attrs["fillcolor"] = "LightYellow"
-					dn.Attrs["style"] = "rounded,filled"
-					attrs := make(dotAttrs)
-					attrs["color"] = "DarkKhaki"
-					attrs["arrowhead"] = "invempty"
-					e := &dotEdge{
-						From:  n,
-						To:    dn,
-						Attrs: attrs,
-					}
-					addEdge(e)
+		for i := targets.RelationBegin(DerivesRelation); i < len(targets); i++ {
+			if targets[i].Relation != DerivesRelation {
+				break
+			}
+			for _, dKey := range targets[i].MatchingKeys.Iterate() {
+				dn := processGraphNode(getGraphNode(dKey))
+				attrs := make(dotAttrs)
+				attrs["color"] = "bisque4"
+				attrs["arrowhead"] = "invempty"
+				e := &dotEdge{
+					From:  n,
+					To:    dn,
+					Attrs: attrs,
 				}
+				addEdge(e)
 			}
 		}
 
-		dependencies := graphNode.Targets.GetTargetsForRelation(DependencyRelation)
-		if dependencies != nil {
+		for i := targets.RelationBegin(DependencyRelation); i < len(targets); i++ {
+			target := targets[i]
+			if target.Relation != DependencyRelation {
+				break
+			}
 			var deps []depNode
-			for _, target := range dependencies.Targets {
-				if target.MatchingKeys.Length() == 0 {
-					var dn *dotNode
-					if target.ExpectedKey != "" {
-						dn = processGraphNode(&graph.RecordedNode{
-							Key: target.ExpectedKey,
-						})
-					} else {
-						dn = processGraphNode(&graph.RecordedNode{
-							Key: "? " + target.Label + " ?",
-						})
-					}
-					deps = append(deps, depNode{node: dn, label: target.Label})
+			if target.MatchingKeys.Length() == 0 {
+				var dn *dotNode
+				if target.ExpectedKey != "" {
+					dn = processGraphNode(&graph.RecordedNode{
+						Key: target.ExpectedKey,
+					})
+				} else {
+					dn = processGraphNode(&graph.RecordedNode{
+						Key: "? " + target.Label + " ?",
+					})
 				}
-				for _, dKey := range target.MatchingKeys.Iterate() {
-					dn := processGraphNode(getGraphNode(dKey))
-					deps = append(deps, depNode{node: dn, label: target.Label})
-				}
+				deps = append(deps, depNode{node: dn, label: target.Label})
+			}
+			for _, dKey := range target.MatchingKeys.Iterate() {
+				dn := processGraphNode(getGraphNode(dKey))
+				deps = append(deps, depNode{node: dn, label: target.Label, satisfied: true})
 			}
 			for _, d := range deps {
 				attrs := make(dotAttrs)
 				attrs["tooltip"] = d.label
+				if !d.satisfied {
+					attrs["color"] = "Red"
+				}
 				e := &dotEdge{
 					From:  n,
 					To:    d.node,
@@ -268,19 +327,18 @@ func (s *Scheduler) renderDotOutput(graphNodes []*graph.RecordedNode, timestamp 
 	}
 
 	hostname, _ := os.Hostname()
-	title := fmt.Sprintf("KVScheduler Graph from %s: %d keys - generated %s on %s (PID: %d)",
-		timestamp.Format(time.RFC1123), len(graphNodes), time.Now().Format(time.RFC1123),
-		hostname, os.Getpid())
+	footer := fmt.Sprintf("KVScheduler Graph - generated at %s on %s (PID: %d)",
+		time.Now().Format(time.RFC1123), hostname, os.Getpid(),
+	)
 
 	dot := &dotGraph{
-		Title:   title,
+		Title:   footer,
 		Minlen:  minlen,
 		Cluster: cluster,
 		Nodes:   nodes,
 		Edges:   edges,
 		Options: map[string]string{
-			"minlen":  fmt.Sprint(minlen),
-			"nodesep": fmt.Sprint(nodesep),
+			"minlen": fmt.Sprint(minlen),
 		},
 	}
 
@@ -293,8 +351,7 @@ func (s *Scheduler) renderDotOutput(graphNodes []*graph.RecordedNode, timestamp 
 }
 
 var (
-	minlen  uint    = 1
-	nodesep float64 = 1
+	minlen uint = 1
 )
 
 // location of dot executable for converting from .dot to .svg
@@ -328,22 +385,22 @@ func dotToImage(outfname string, format string, dot []byte) (string, error) {
 }
 
 const tmplGraph = `digraph kvscheduler {
-	ranksep=.5
+	ranksep=.5;
 	//nodesep=.1
     label="{{.Title}}";
-	labelloc="t";
-    labeljust="l";
+	labelloc="b";
+    labeljust="c";
     fontsize="12";
 	fontname="Ubuntu"; 
     rankdir="LR";
     bgcolor="lightgray";
     style="solid";
     penwidth="1";
-    pad="0.05";
+    pad="0.04";
     nodesep="{{.Options.nodesep}}";
 	ordering="out";
 
-    node [shape="box" style="filled" fontname="Ubuntu" fillcolor="honeydew" penwidth="1.0" margin="0.05,0.0"];
+    node [shape="box" style="filled" fontname="Ubuntu" fillcolor="honeydew" penwidth="1.0" margin="0.03,0.0"];
     edge [minlen="{{.Options.minlen}}"]
 
     {{template "cluster" .Cluster}}

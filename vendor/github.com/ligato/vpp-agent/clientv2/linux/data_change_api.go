@@ -15,8 +15,9 @@
 package linuxclient
 
 import (
-	"github.com/ligato/vpp-agent/api/models/linux/interfaces"
-	"github.com/ligato/vpp-agent/api/models/linux/l3"
+	linux_interfaces "github.com/ligato/vpp-agent/api/models/linux/interfaces"
+	linux_l3 "github.com/ligato/vpp-agent/api/models/linux/l3"
+	vpp_abf "github.com/ligato/vpp-agent/api/models/vpp/abf"
 	vpp_acl "github.com/ligato/vpp-agent/api/models/vpp/acl"
 	vpp_interfaces "github.com/ligato/vpp-agent/api/models/vpp/interfaces"
 	ipsec "github.com/ligato/vpp-agent/api/models/vpp/ipsec"
@@ -66,6 +67,8 @@ type PutDSL interface {
 	VppInterface(val *vpp_interfaces.Interface) PutDSL
 	// ACL adds a request to create or update VPP Access Control List.
 	ACL(acl *vpp_acl.ACL) PutDSL
+	// ABF adds a request to create or update VPP ACL-based forwarding.
+	ABF(abf *vpp_abf.ABF) PutDSL
 	/*// BfdSession adds a request to create or update VPP bidirectional
 	// forwarding detection session.
 	BfdSession(val *vpp_bfd.SingleHopBFD_Session) PutDSL
@@ -79,6 +82,8 @@ type PutDSL interface {
 	BD(val *vpp_l2.BridgeDomain) PutDSL
 	// BDFIB adds a request to create or update VPP L2 Forwarding Information Base.
 	BDFIB(fib *vpp_l2.FIBEntry) PutDSL
+	// VrfTable adds a request to create or update VPP VRF table.
+	VrfTable(val *vpp_l3.VrfTable) PutDSL
 	// XConnect adds a request to create or update VPP Cross Connect.
 	XConnect(val *vpp_l2.XConnectPair) PutDSL
 	// StaticRoute adds a request to create or update VPP L3 Static Route.
@@ -107,6 +112,8 @@ type PutDSL interface {
 	PuntIPRedirect(val *punt.IPRedirect) PutDSL
 	// PuntToHost adds request to create or update rule to punt L4 traffic to a host.
 	PuntToHost(val *punt.ToHost) PutDSL
+	// PuntException adds request to create or update exception to punt specific packets.
+	PuntException(val *punt.Exception) PutDSL
 
 	// Delete changes the DSL mode to allow removing an existing configuration.
 	// See documentation for DataChangeDSL.Delete().
@@ -131,6 +138,8 @@ type DeleteDSL interface {
 	VppInterface(ifaceName string) DeleteDSL
 	// ACL adds a request to delete an existing VPP Access Control List.
 	ACL(aclName string) DeleteDSL
+	// ABF adds a request to delete an existing VPP ACL-based forwarding.
+	ABF(abfIndex uint32) DeleteDSL
 	/*// BfdSession adds a request to delete an existing VPP bidirectional
 	// forwarding detection session.
 	BfdSession(bfdSessionIfaceName string) DeleteDSL
@@ -145,6 +154,8 @@ type DeleteDSL interface {
 	// FIB adds a request to delete an existing VPP L2 Forwarding Information
 	// Base.
 	BDFIB(bdName string, mac string) DeleteDSL
+	// VrfTable adds a request to delete existing VPP VRF table.
+	VrfTable(id uint32, proto vpp_l3.VrfTable_Protocol) DeleteDSL
 	// XConnect adds a request to delete an existing VPP Cross Connect.
 	XConnect(rxIfaceName string) DeleteDSL
 	// StaticRoute adds a request to delete an existing VPP L3 Static Route.
@@ -174,6 +185,8 @@ type DeleteDSL interface {
 	PuntIPRedirect(l3Proto punt.L3Protocol, txInterface string) DeleteDSL
 	// PuntToHost adds request to delete a rule used to punt L4 traffic to a host.
 	PuntToHost(l3Proto punt.L3Protocol, l4Proto punt.L4Protocol, port uint32) DeleteDSL
+	// PuntException adds request to delete exception to punt specific packets.
+	PuntException(reason string) DeleteDSL
 
 	// Put changes the DSL mode to allow configuration editing.
 	// See documentation for DataChangeDSL.Put().

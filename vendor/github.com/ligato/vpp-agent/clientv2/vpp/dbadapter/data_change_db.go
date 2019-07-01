@@ -15,9 +15,12 @@
 package dbadapter
 
 import (
+	"context"
+
 	"github.com/ligato/cn-infra/db/keyval"
 	"github.com/ligato/vpp-agent/pkg/models"
 
+	abf "github.com/ligato/vpp-agent/api/models/vpp/abf"
 	acl "github.com/ligato/vpp-agent/api/models/vpp/acl"
 	intf "github.com/ligato/vpp-agent/api/models/vpp/interfaces"
 	ipsec "github.com/ligato/vpp-agent/api/models/vpp/ipsec"
@@ -26,7 +29,7 @@ import (
 	nat "github.com/ligato/vpp-agent/api/models/vpp/nat"
 	punt "github.com/ligato/vpp-agent/api/models/vpp/punt"
 	stn "github.com/ligato/vpp-agent/api/models/vpp/stn"
-	"github.com/ligato/vpp-agent/clientv2/vpp"
+	vppclient "github.com/ligato/vpp-agent/clientv2/vpp"
 )
 
 // NewDataChangeDSL returns a new instance of DataChangeDSL which implements
@@ -66,7 +69,7 @@ func (dsl *DataChangeDSL) Delete() vppclient.DeleteDSL {
 
 // Send propagates requested changes to the plugins.
 func (dsl *DataChangeDSL) Send() vppclient.Reply {
-	err := dsl.txn.Commit()
+	err := dsl.txn.Commit(context.Background())
 	return &Reply{err}
 }
 
@@ -79,6 +82,12 @@ func (dsl *PutDSL) Interface(val *intf.Interface) vppclient.PutDSL {
 // ACL adds a request to create or update VPP Access Control List.
 func (dsl *PutDSL) ACL(val *acl.ACL) vppclient.PutDSL {
 	dsl.parent.txn.Put(acl.Key(val.Name), val)
+	return dsl
+}
+
+// ABF adds a request to create or update VPP ACL-based forwarding
+func (dsl *PutDSL) ABF(val *abf.ABF) vppclient.PutDSL {
+	dsl.parent.txn.Put(models.Key(val), val)
 	return dsl
 }
 
@@ -97,6 +106,12 @@ func (dsl *PutDSL) BDFIB(val *l2.FIBEntry) vppclient.PutDSL {
 // XConnect adds a request to create or update VPP Cross Connect.
 func (dsl *PutDSL) XConnect(val *l2.XConnectPair) vppclient.PutDSL {
 	dsl.parent.txn.Put(l2.XConnectKey(val.ReceiveInterface), val)
+	return dsl
+}
+
+// VrfTable adds a request to create or update VPP VRF table.
+func (dsl *PutDSL) VrfTable(val *l3.VrfTable) vppclient.PutDSL {
+	dsl.parent.txn.Put(l3.VrfTableKey(val.Id, val.Protocol), val)
 	return dsl
 }
 
@@ -166,6 +181,12 @@ func (dsl *PutDSL) PuntToHost(val *punt.ToHost) vppclient.PutDSL {
 	return dsl
 }
 
+// PuntException adds request to create or update exception to punt specific packets.
+func (dsl *PutDSL) PuntException(val *punt.Exception) vppclient.PutDSL {
+	dsl.parent.txn.Put(models.Key(val), val)
+	return dsl
+}
+
 // Delete changes the DSL mode to allow removal of an existing configuration.
 func (dsl *PutDSL) Delete() vppclient.DeleteDSL {
 	return &DeleteDSL{dsl.parent}
@@ -188,6 +209,12 @@ func (dsl *DeleteDSL) ACL(aclName string) vppclient.DeleteDSL {
 	return dsl
 }
 
+// ABF adds a request to delete and existing VPP ACL-based forwarding.
+func (dsl *DeleteDSL) ABF(abfIndex uint32) vppclient.DeleteDSL {
+	dsl.parent.txn.Delete(abf.Key(abfIndex))
+	return dsl
+}
+
 // BD adds a request to delete an existing VPP Bridge Domain.
 func (dsl *DeleteDSL) BD(bdName string) vppclient.DeleteDSL {
 	dsl.parent.txn.Delete(l2.BridgeDomainKey(bdName))
@@ -204,6 +231,12 @@ func (dsl *DeleteDSL) BDFIB(bdName string, mac string) vppclient.DeleteDSL {
 // XConnect adds a request to delete an existing VPP Cross Connect.
 func (dsl *DeleteDSL) XConnect(rxIfName string) vppclient.DeleteDSL {
 	dsl.parent.txn.Delete(l2.XConnectKey(rxIfName))
+	return dsl
+}
+
+// VrfTable adds a request to delete existing VPP VRF table.
+func (dsl *DeleteDSL) VrfTable(id uint32, proto l3.VrfTable_Protocol) vppclient.DeleteDSL {
+	dsl.parent.txn.Delete(l3.VrfTableKey(id, proto))
 	return dsl
 }
 
@@ -270,6 +303,12 @@ func (dsl *DeleteDSL) PuntIPRedirect(l3Proto punt.L3Protocol, txInterface string
 // PuntToHost adds request to delete a rule used to punt L4 traffic to a host.
 func (dsl *DeleteDSL) PuntToHost(l3Proto punt.L3Protocol, l4Proto punt.L4Protocol, port uint32) vppclient.DeleteDSL {
 	dsl.parent.txn.Delete(punt.ToHostKey(l3Proto, l4Proto, port))
+	return dsl
+}
+
+// PuntException adds request to delete exception to punt specific packets.
+func (dsl *DeleteDSL) PuntException(reason string) vppclient.DeleteDSL {
+	dsl.parent.txn.Delete(punt.ExceptionKey(reason))
 	return dsl
 }
 

@@ -30,26 +30,17 @@ import (
 )
 
 var (
-	inputFile       = flag.String("input-file", "", "Input JSON file.")
-	inputDir        = flag.String("input-dir", ".", "Input directory with JSON files.")
-	outputDir       = flag.String("output-dir", ".", "Output directory where package folders will be generated.")
-	includeAPIVer   = flag.Bool("include-apiver", false, "Whether to include VlAPIVersion in generated file.")
-	debug           = flag.Bool("debug", false, "Turn on debug mode.")
-	continueOnError = flag.Bool("continue-onerror", false, "Wheter to continue with next file on error.")
+	inputFile          = flag.String("input-file", "", "Input file with VPP API in JSON format.")
+	inputDir           = flag.String("input-dir", ".", "Input directory with VPP API files in JSON format.")
+	outputDir          = flag.String("output-dir", ".", "Output directory where package folders will be generated.")
+	includeAPIVer      = flag.Bool("include-apiver", false, "Include APIVersion constant for each module.")
+	includeComments    = flag.Bool("include-comments", false, "Include JSON API source in comments for each object.")
+	includeBinapiNames = flag.Bool("include-binapi-names", false, "Include binary API names in struct tag.")
+	continueOnError    = flag.Bool("continue-onerror", false, "Continue with next file on error.")
+	debug              = flag.Bool("debug", debugMode, "Enable debug mode.")
 )
 
-func init() {
-	flag.Parse()
-	if *debug {
-		logrus.SetLevel(logrus.DebugLevel)
-	}
-}
-
-func logf(f string, v ...interface{}) {
-	if *debug {
-		logrus.Debugf(f, v...)
-	}
-}
+var debugMode = os.Getenv("DEBUG_BINAPI_GENERATOR") != ""
 
 var log = logrus.Logger{
 	Level:     logrus.InfoLevel,
@@ -58,6 +49,11 @@ var log = logrus.Logger{
 }
 
 func main() {
+	flag.Parse()
+	if *debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
 	if *inputFile == "" && *inputDir == "" {
 		fmt.Fprintln(os.Stderr, "ERROR: input-file or input-dir must be specified")
 		os.Exit(1)
@@ -111,6 +107,10 @@ func generateFromFile(inputFile, outputDir string) error {
 	if err != nil {
 		return err
 	}
+
+	ctx.includeAPIVersionCrc = *includeAPIVer
+	ctx.includeComments = *includeComments
+	ctx.includeBinapiNames = *includeBinapiNames
 
 	// read input file contents
 	ctx.inputData, err = readFile(inputFile)
@@ -181,4 +181,10 @@ func parseJSON(inputData []byte) (*jsongo.JSONNode, error) {
 	}
 
 	return &root, nil
+}
+
+func logf(f string, v ...interface{}) {
+	if *debug {
+		logrus.Debugf(f, v...)
+	}
 }

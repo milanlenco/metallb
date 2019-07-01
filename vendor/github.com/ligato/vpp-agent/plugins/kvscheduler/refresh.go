@@ -16,6 +16,7 @@ package kvscheduler
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/gogo/protobuf/proto"
@@ -24,6 +25,8 @@ import (
 	"github.com/ligato/vpp-agent/plugins/kvscheduler/internal/graph"
 	"github.com/ligato/vpp-agent/plugins/kvscheduler/internal/utils"
 )
+
+var enableGraphDump = os.Getenv("KVSCHEDULER_GRAPHDUMP") != ""
 
 const (
 	nodeVisitBeginMark = "[BEGIN]"
@@ -37,8 +40,10 @@ type resyncData struct {
 }
 
 // refreshGraph updates all/some values in the graph to their *real* state
-// using the Dump methods from descriptors.
-func (s *Scheduler) refreshGraph(graphW graph.RWAccess, keys utils.KeySet, resyncData *resyncData, verbose bool) {
+// using the Retrieve methods from descriptors.
+func (s *Scheduler) refreshGraph(graphW graph.RWAccess,
+	keys utils.KeySet, resyncData *resyncData, verbose bool,
+) {
 	if s.logGraphWalk {
 		keysToRefresh := "<ALL>"
 		if keys != nil && keys.Length() > 0 {
@@ -50,9 +55,14 @@ func (s *Scheduler) refreshGraph(graphW graph.RWAccess, keys utils.KeySet, resyn
 	}
 	refreshedKeys := utils.NewMapBasedKeySet()
 
-	// iterate over all descriptors, in order given by dump dependencies
+	// iterate over all descriptors, in order given by retrieve dependencies
 	for _, descriptor := range s.registry.GetAllDescriptors() {
-		handler := &descriptorHandler{descriptor}
+		handler := newDescriptorHandler(descriptor)
+
+		// get base values for this descriptor from memory before refresh
+		// (including those marked as unavailable which may need metadata update)
+		descrNodes := graphW.GetNodes(nil,
+			descrValsSelectors(descriptor.Name, false)...)
 
 		// check if this descriptor's key space should be refreshed as well
 		var skip bool
@@ -67,16 +77,18 @@ func (s *Scheduler) refreshGraph(graphW graph.RWAccess, keys utils.KeySet, resyn
 		}
 		if skip {
 			// nothing to refresh in the key space of this descriptor
-			s.skipRefresh(graphW, descriptor.Name, nil, refreshedKeys)
+			s.skipRefresh(descrNodes, nil, refreshedKeys)
 			continue
 		}
 
-		// get available base values for this descriptor from memory before
-		// refresh
-		prevAvailNodes := graphW.GetNodes(nil, correlateValsSelectors(descriptor.Name)...)
-
 		// get key-value pairs for correlation
-		var correlate []kvs.KVWithMetadata
+		var correlateCap int
+		if resyncData != nil && resyncData.first {
+			correlateCap = len(resyncData.values)
+		} else {
+			correlateCap = len(descrNodes)
+		}
+		correlate := make([]kvs.KVWithMetadata, 0, correlateCap)
 		if resyncData != nil && resyncData.first {
 			// for startup resync, use data received from NB
 			for _, kv := range resyncData.values {
@@ -92,89 +104,97 @@ func (s *Scheduler) refreshGraph(graphW graph.RWAccess, keys utils.KeySet, resyn
 		} else {
 			// for refresh of failed values or run-time resync, use in-memory
 			// kv-pairs for correlation
-			correlate = nodesToKVPairsWithMetadata(prevAvailNodes)
+			for _, node := range descrNodes {
+				if isNodeAvailable(node) {
+					correlate = append(correlate, nodeToKVPairWithMetadata(node))
+				}
+			}
 		}
 
-		// execute Dump operation
-		dump, ableToDump, err := handler.dump(correlate)
+		// execute Retrieve operation
+		retrieved, ableToRetrieve, err := handler.retrieve(correlate)
 
-		// mark un-dumpable as refreshed
-		if !ableToDump || err != nil {
+		// mark un-retrievable as refreshed
+		if !ableToRetrieve || err != nil {
 			if err != nil {
 				s.Log.WithField("descriptor", descriptor.Name).
-					Error("failed to dump values, refresh for the descriptor will be skipped")
+					Error("failed to retrieve values, refresh for the descriptor will be skipped")
 			}
-			s.skipRefresh(graphW, descriptor.Name, nil, refreshedKeys)
+			s.skipRefresh(descrNodes, nil, refreshedKeys)
 			continue
 		} else if verbose {
 			plural := "s"
-			if len(dump) == 1 {
+			if len(retrieved) == 1 {
 				plural = ""
 			}
 
-			var dumpList string
-			for _, d := range dump {
-				dumpList += fmt.Sprintf("\n - %+v", d)
+			var list strings.Builder
+			for i, d := range retrieved {
+				num := fmt.Sprintf("%d.", i+1)
+				list.WriteString(fmt.Sprintf("\n - %3s [%s]: %q (%s)\n   %v",
+					num, descriptor.Name, d.Key, d.Origin, utils.ProtoToString(d.Value)))
+				if d.Metadata != nil {
+					list.WriteString(fmt.Sprintf("\n   Metadata: %+v", d.Metadata))
+				}
 			}
-
-			s.Log.Debugf("Descriptor %s dumped %d item%s: %v",
-				descriptor.Name, len(dump), plural, dumpList)
+			s.Log.Debugf("%s descriptor retrieved %d item%s: %v",
+				descriptor.Name, len(retrieved), plural, list.String())
 
 		}
 
 		if keys != nil && keys.Length() > 0 {
 			// mark keys that should not be touched as refreshed
-			s.skipRefresh(graphW, descriptor.Name, keys, refreshedKeys)
+			s.skipRefresh(descrNodes, keys, refreshedKeys)
 		}
 
-		// process dumped kv-pairs
-		for _, dumpedKV := range dump {
+		// process retrieved kv-pairs
+		for _, retrievedKV := range retrieved {
 			if keys != nil && keys.Length() > 0 {
 				// do no touch values that aren't meant to be refreshed
-				if toRefresh := keys.Has(dumpedKV.Key); !toRefresh {
+				if toRefresh := keys.Has(retrievedKV.Key); !toRefresh {
 					continue
 				}
 			}
-			if !s.validDumpedKV(dumpedKV, descriptor, refreshedKeys) {
+			if !s.validRetrievedKV(retrievedKV, descriptor, refreshedKeys) {
 				continue
 			}
 
 			// 1st attempt to determine value origin
-			if dumpedKV.Origin == kvs.UnknownOrigin {
+			if retrievedKV.Origin == kvs.UnknownOrigin {
 				// determine value origin based on the values for correlation
 				for _, kv := range correlate {
-					if kv.Key == dumpedKV.Key {
-						dumpedKV.Origin = kv.Origin
+					if kv.Key == retrievedKV.Key {
+						retrievedKV.Origin = kv.Origin
 						break
 					}
 				}
 			}
 
 			// 2nd attempt to determine value origin
-			if dumpedKV.Origin == kvs.UnknownOrigin {
+			if retrievedKV.Origin == kvs.UnknownOrigin {
 				// determine value origin based on the last revision
-				timeline := graphW.GetNodeTimeline(dumpedKV.Key)
+				timeline := graphW.GetNodeTimeline(retrievedKV.Key)
 				if len(timeline) > 0 {
 					lastRev := timeline[len(timeline)-1]
-					valueStateFlag := lastRev.Flags.GetFlag(ValueStateFlagName)
+					valueStateFlag := lastRev.Flags.GetFlag(ValueStateFlagIndex)
 					valueState := valueStateFlag.(*ValueStateFlag).valueState
-					dumpedKV.Origin = valueStateToOrigin(valueState)
+					retrievedKV.Origin = valueStateToOrigin(valueState)
 				}
 			}
 
-			if dumpedKV.Origin == kvs.UnknownOrigin {
+			if retrievedKV.Origin == kvs.UnknownOrigin {
 				// will assume this is from SB
-				dumpedKV.Origin = kvs.FromSB
+				retrievedKV.Origin = kvs.FromSB
 			}
 
 			// refresh node that represents this kv-pair
-			s.refreshValue(graphW, dumpedKV, handler, refreshedKeys, 2)
+			s.refreshValue(graphW, retrievedKV, handler, refreshedKeys, 2)
 		}
 
 		// unset the metadata from base NB values that do not actually exists
-		for _, node := range prevAvailNodes {
+		for _, node := range descrNodes {
 			if refreshed := refreshedKeys.Has(node.GetKey()); !refreshed {
-				if getNodeOrigin(node) == kvs.FromNB {
+				if getNodeOrigin(node) == kvs.FromNB && node.GetMetadata() != nil {
 					if s.logGraphWalk {
 						fmt.Printf("  -> unset metadata for key=%s\n", node.GetKey())
 					}
@@ -183,10 +203,6 @@ func (s *Scheduler) refreshGraph(graphW graph.RWAccess, keys utils.KeySet, resyn
 				}
 			}
 		}
-
-		// in-progress save to expose changes in the metadata for dumps of the following
-		// descriptors
-		graphW.Save()
 	}
 
 	// update state of values that do not actually exist
@@ -197,30 +213,30 @@ func (s *Scheduler) refreshGraph(graphW graph.RWAccess, keys utils.KeySet, resyn
 		s.refreshUnavailNode(graphW, node, refreshedKeys, 2)
 	}
 
-	if verbose {
+	if enableGraphDump && verbose && s.config.PrintTxnSummary {
 		fmt.Println(dumpGraph(graphW))
 	}
 }
 
-// refreshValue refreshes node that represents the given dumped key-value pair.
-func (s *Scheduler) refreshValue(graphW graph.RWAccess, dumpedKV kvs.KVWithMetadata,
+// refreshValue refreshes node that represents the given retrieved key-value pair.
+func (s *Scheduler) refreshValue(graphW graph.RWAccess, retrievedKV kvs.KVWithMetadata,
 	handler *descriptorHandler, refreshed utils.KeySet, indent int) {
 	if s.logGraphWalk {
 		indentStr := strings.Repeat(" ", indent)
-		msg := fmt.Sprintf("refreshValue (key=%s)", dumpedKV.Key)
+		msg := fmt.Sprintf("refreshValue (key=%s)", retrievedKV.Key)
 		fmt.Printf("%s%s %s\n", indentStr, nodeVisitBeginMark, msg)
 		defer fmt.Printf("%s%s %s\n", indentStr, nodeVisitEndMark, msg)
 	}
 
 	// refresh node that represents this kv-pair
-	node := graphW.SetNode(dumpedKV.Key)
+	node := graphW.SetNode(retrievedKV.Key)
 	node.SetLabel(handler.keyLabel(node.GetKey()))
-	node.SetValue(dumpedKV.Value)
+	node.SetValue(retrievedKV.Value)
 	if handler.descriptor.WithMetadata {
 		node.SetMetadataMap(handler.descriptor.Name)
-		node.SetMetadata(dumpedKV.Metadata)
+		node.SetMetadata(retrievedKV.Metadata)
 	}
-	s.refreshAvailNode(graphW, node, dumpedKV.Origin, false, node.GetKey(), refreshed, indent+2)
+	s.refreshAvailNode(graphW, node, retrievedKV.Origin, false, node.GetKey(), refreshed, indent+2)
 
 	// determine the set of unavailable derived values
 	obsolete := getDerivedKeys(node)
@@ -244,30 +260,34 @@ func (s *Scheduler) refreshValue(graphW graph.RWAccess, dumpedKV kvs.KVWithMetad
 		derNode := graphW.SetNode(kv.Key)
 		if !isObsolete {
 			derDescr := s.registry.GetDescriptorForKey(kv.Key)
-			derHandler := descriptorHandler{derDescr}
+			derHandler := newDescriptorHandler(derDescr)
 			derNode.SetValue(kv.Value)
 			dependencies := derHandler.dependencies(derNode.GetKey(), derNode.GetValue())
 			derNode.SetTargets(constructTargets(dependencies, nil))
-			s.refreshAvailNode(graphW, derNode, dumpedKV.Origin, true, node.GetKey(), refreshed, indent+2)
+			s.refreshAvailNode(graphW, derNode, retrievedKV.Origin, true, node.GetKey(), refreshed, indent+2)
 		} else {
 			s.refreshUnavailNode(graphW, derNode, refreshed, indent+2)
 		}
 	}
 }
 
-// refreshAvailNode refreshes state of a node whose value was returned by Dump.
+// refreshAvailNode refreshes state of a node whose value was returned by Retrieve.
 func (s *Scheduler) refreshAvailNode(graphW graph.RWAccess, node graph.NodeRW,
 	origin kvs.ValueOrigin, derived bool, baseKey string, refreshed utils.KeySet, indent int) {
 	if s.logGraphWalk {
 		indentStr := strings.Repeat(" ", indent)
-		msg := fmt.Sprintf("refreshAvailNode (key=%s, isDerived=%t)", node.GetKey(), derived)
+		var derivedMark string
+		if derived {
+			derivedMark = ", is-derived"
+		}
+		msg := fmt.Sprintf("refreshAvailNode (key=%s%s)", node.GetKey(), derivedMark)
 		fmt.Printf("%s%s %s\n", indentStr, nodeVisitBeginMark, msg)
 		defer fmt.Printf("%s%s %s\n", indentStr, nodeVisitEndMark, msg)
 	}
 
 	// validate first
 	descriptor := s.registry.GetDescriptorForKey(node.GetKey()) // nil for properties
-	if derived && !s.validDumpedDerivedKV(node, descriptor, refreshed) {
+	if derived && !s.validRetrievedDerivedKV(node, descriptor, refreshed) {
 		graphW.DeleteNode(node.GetKey())
 		return
 	}
@@ -275,7 +295,7 @@ func (s *Scheduler) refreshAvailNode(graphW graph.RWAccess, node graph.NodeRW,
 	// update availability
 	if !isNodeAvailable(node) {
 		s.updatedStates.Add(baseKey)
-		node.DelFlags(UnavailValueFlagName)
+		node.DelFlags(UnavailValueFlagIndex)
 	}
 	refreshed.Add(node.GetKey())
 
@@ -283,9 +303,9 @@ func (s *Scheduler) refreshAvailNode(graphW graph.RWAccess, node graph.NodeRW,
 	if getNodeState(node) == kvs.ValueState_NONEXISTENT {
 		// newly found node
 		if origin == kvs.FromSB {
-			s.refreshNodeState(node, kvs.ValueState_RETRIEVED, indent)
+			s.refreshNodeState(node, kvs.ValueState_OBTAINED, indent)
 		} else {
-			s.refreshNodeState(node, kvs.ValueState_FOUND, indent)
+			s.refreshNodeState(node, kvs.ValueState_DISCOVERED, indent)
 		}
 	}
 	if getNodeState(node) == kvs.ValueState_PENDING {
@@ -297,12 +317,12 @@ func (s *Scheduler) refreshAvailNode(graphW graph.RWAccess, node graph.NodeRW,
 	if descriptor != nil {
 		node.SetFlags(&DescriptorFlag{descriptor.Name})
 	} else {
-		node.DelFlags(DescriptorFlagName)
+		node.DelFlags(DescriptorFlagIndex)
 	}
 
 	// updated flags for derived values
 	if !derived {
-		node.DelFlags(DerivedFlagName)
+		node.DelFlags(DerivedFlagIndex)
 	} else {
 		node.SetFlags(&DerivedFlag{baseKey})
 	}
@@ -322,7 +342,7 @@ func (s *Scheduler) refreshUnavailNode(graphW graph.RWAccess, node graph.Node, r
 		s.updatedStates.Add(getNodeBaseKey(node))
 	}
 	state := getNodeState(node)
-	if getNodeOrigin(node) == kvs.FromSB || state == kvs.ValueState_FOUND {
+	if getNodeOrigin(node) == kvs.FromSB || state == kvs.ValueState_DISCOVERED {
 		// just remove from the graph
 		graphW.DeleteNode(node.GetKey())
 		return
@@ -336,7 +356,7 @@ func (s *Scheduler) refreshUnavailNode(graphW graph.RWAccess, node graph.Node, r
 
 	// update state
 	if state == kvs.ValueState_UNIMPLEMENTED {
-		// it is expected that unimplemented value is not dumped
+		// it is expected that unimplemented value is not retrieved
 		return
 	}
 	if state == kvs.ValueState_CONFIGURED {
@@ -360,11 +380,8 @@ func (s *Scheduler) refreshNodeState(node graph.NodeRW, newState kvs.ValueState,
 
 // skipRefresh is used to mark nodes as refreshed without actual refreshing
 // if they should not (or cannot) be refreshed.
-func (s *Scheduler) skipRefresh(graphR graph.ReadAccess, descriptor string, except utils.KeySet, refreshed utils.KeySet) {
-	skipped := graphR.GetNodes(nil,
-		graph.WithFlags(&DescriptorFlag{descriptor}),
-		graph.WithoutFlags(&DerivedFlag{}))
-	for _, node := range skipped {
+func (s *Scheduler) skipRefresh(nodes []graph.Node, except utils.KeySet, refreshed utils.KeySet) {
+	for _, node := range nodes {
 		if except != nil {
 			if toRefresh := except.Has(node.GetKey()); toRefresh {
 				continue
@@ -385,7 +402,7 @@ func dumpGraph(g graph.RWAccess) string {
 	var buf strings.Builder
 	graphInfo := fmt.Sprintf("%d nodes", len(keys))
 	buf.WriteString("+======================================================================================================================+\n")
-	buf.WriteString(fmt.Sprintf("| GRAPH DUMP %105s |\n", graphInfo))
+	buf.WriteString(fmt.Sprintf("| GRAPH %110s |\n", graphInfo))
 	buf.WriteString("+======================================================================================================================+\n")
 	writeLine := func(left, right string) {
 		n := 115 - len(left)
@@ -408,15 +425,15 @@ func dumpGraph(g graph.RWAccess) string {
 			keyLabel = fmt.Sprintf("%s (%s)", key, label)
 		}
 		descriptor := ""
-		if f := node.GetFlag(DescriptorFlagName); f != nil {
+		if f := node.GetFlag(DescriptorFlagIndex); f != nil {
 			descriptor = fmt.Sprintf("[%s] ", f.GetValue())
 		}
 		lastUpdate := "-"
-		if f := node.GetFlag(LastUpdateFlagName); f != nil {
+		if f := node.GetFlag(LastUpdateFlagIndex); f != nil {
 			lastUpdate = f.GetValue()
 		}
 		unavailable := ""
-		if f := node.GetFlag(UnavailValueFlagName); f != nil {
+		if f := node.GetFlag(UnavailValueFlagIndex); f != nil {
 			unavailable = "<UNAVAILABLE> "
 		}
 		writeLine(fmt.Sprintf("%s%s", descriptor, keyLabel), fmt.Sprintf("%s %s %s",
@@ -452,7 +469,7 @@ func dumpGraph(g graph.RWAccess) string {
 				} else {
 					for _, node := range der.Nodes {
 						desc := ""
-						if d := node.GetFlag(DescriptorFlagName); d != nil {
+						if d := node.GetFlag(DescriptorFlagIndex); d != nil {
 							desc = fmt.Sprintf("[%s] ", d.GetValue())
 						}
 						nodeDers = append(nodeDers, fmt.Sprintf("%s%s", desc, node.GetKey()))
@@ -464,31 +481,35 @@ func dumpGraph(g graph.RWAccess) string {
 		if f := node.GetSources(DependencyRelation); len(f) > 0 {
 			writeLine("Dependency for:", "")
 			var nodeDeps []string
-			for _, node := range f {
-				desc := ""
-				if d := node.GetFlag(DescriptorFlagName); d != nil {
-					desc = fmt.Sprintf("[%s] ", d.GetValue())
+			for _, perLabel := range f {
+				for _, node := range perLabel.Nodes {
+					desc := ""
+					if d := node.GetFlag(DescriptorFlagIndex); d != nil {
+						desc = fmt.Sprintf("[%s] ", d.GetValue())
+					}
+					nodeDeps = append(nodeDeps, fmt.Sprintf("%s%s", desc, node.GetKey()))
 				}
-				nodeDeps = append(nodeDeps, fmt.Sprintf("%s%s", desc, node.GetKey()))
 			}
 			writeLines(strings.Join(nodeDeps, "\n"), " - ")
 		}
 		if f := node.GetSources(DerivesRelation); len(f) > 0 {
 			var nodeDers []string
-			for _, der := range f {
-				nodeDers = append(nodeDers, der.GetKey())
+			for _, perLabel := range f {
+				for _, der := range perLabel.Nodes {
+					nodeDers = append(nodeDers, der.GetKey())
+				}
 			}
 			writeLine(fmt.Sprintf("Derived from: %s", strings.Join(nodeDers, " ")), "")
 		}
 		if f := node.GetMetadata(); f != nil {
 			writeLine(fmt.Sprintf("Metadata: %+v", f), "")
 		}
-		if f := node.GetFlag(ErrorFlagName); f != nil {
+		if f := node.GetFlag(ErrorFlagIndex); f != nil {
 			writeLine(fmt.Sprintf("Errors: %+v", f.GetValue()), "")
 		}
 
 		if i+1 != len(keys) {
-			buf.WriteString("+======================================================================================================================+\n")
+			buf.WriteString("+----------------------------------------------------------------------------------------------------------------------+\n")
 		}
 	}
 	buf.WriteString("+======================================================================================================================+\n")
@@ -496,26 +517,26 @@ func dumpGraph(g graph.RWAccess) string {
 	return buf.String()
 }
 
-// validDumpedKV verifies validity of a dumped KV-pair.
-func (s *Scheduler) validDumpedKV(kv kvs.KVWithMetadata, descriptor *kvs.KVDescriptor, refreshed utils.KeySet) bool {
+// validRetrievedKV verifies validity of a retrieved KV-pair.
+func (s *Scheduler) validRetrievedKV(kv kvs.KVWithMetadata, descriptor *kvs.KVDescriptor, refreshed utils.KeySet) bool {
 	if kv.Key == "" {
 		s.Log.WithFields(logging.Fields{
 			"descriptor": descriptor.Name,
-		}).Warn("Descriptor dumped value with empty key")
+		}).Warn("Descriptor retrieved value with empty key")
 		return false
 	}
-	if alreadyDumped := refreshed.Has(kv.Key); alreadyDumped {
+	if alreadyRetrieved := refreshed.Has(kv.Key); alreadyRetrieved {
 		s.Log.WithFields(logging.Fields{
 			"descriptor": descriptor.Name,
 			"key":        kv.Key,
-		}).Warn("The same value was dumped more than once")
+		}).Warn("The same value was retrieved more than once")
 		return false
 	}
 	if kv.Value == nil {
 		s.Log.WithFields(logging.Fields{
 			"descriptor": descriptor.Name,
 			"key":        kv.Key,
-		}).Warn("Descriptor dumped nil value")
+		}).Warn("Descriptor retrieved nil value")
 		return false
 	}
 	if !descriptor.KeySelector(kv.Key) {
@@ -523,14 +544,14 @@ func (s *Scheduler) validDumpedKV(kv kvs.KVWithMetadata, descriptor *kvs.KVDescr
 			"descriptor": descriptor.Name,
 			"key":        kv.Key,
 			"value":      kv.Value,
-		}).Warn("Descriptor dumped value outside of its key space")
+		}).Warn("Descriptor retrieved value outside of its key space")
 		return false
 	}
 	return true
 }
 
-// validDumpedKV verifies validity of a KV-pair derived from a dumped value.
-func (s *Scheduler) validDumpedDerivedKV(node graph.Node, descriptor *kvs.KVDescriptor, refreshed utils.KeySet) bool {
+// validRetrievedDerivedKV verifies validity of a KV-pair derived from a retrieved value.
+func (s *Scheduler) validRetrievedDerivedKV(node graph.Node, descriptor *kvs.KVDescriptor, refreshed utils.KeySet) bool {
 	descriptorName := "<NONE>"
 	if descriptor != nil {
 		descriptorName = descriptor.Name
@@ -542,12 +563,12 @@ func (s *Scheduler) validDumpedDerivedKV(node graph.Node, descriptor *kvs.KVDesc
 		}).Warn("Derived nil value")
 		return false
 	}
-	if alreadyDumped := refreshed.Has(node.GetKey()); alreadyDumped {
+	if alreadyRetrieved := refreshed.Has(node.GetKey()); alreadyRetrieved {
 		s.Log.WithFields(logging.Fields{
 			"descriptor": descriptorName,
 			"key":        node.GetKey(),
-		}).Warn("The same value was dumped more than once")
-		// return true -> let's overwrite invalidly dumped derived value
+		}).Warn("The same value was retrieved more than once")
+		// return true -> let's overwrite invalidly retrieved derived value
 	}
 	return true
 }

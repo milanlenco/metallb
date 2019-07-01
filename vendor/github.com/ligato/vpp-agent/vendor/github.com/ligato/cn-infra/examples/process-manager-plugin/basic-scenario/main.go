@@ -24,16 +24,16 @@ import (
 	"time"
 
 	"github.com/ligato/cn-infra/agent"
+	pm "github.com/ligato/cn-infra/exec/processmanager"
+	"github.com/ligato/cn-infra/exec/processmanager/status"
 	"github.com/ligato/cn-infra/logging"
-	"github.com/ligato/cn-infra/process"
-	"github.com/ligato/cn-infra/process/status"
 	"github.com/pkg/errors"
 )
 
 const pluginName = "process-manager-example"
 
 func main() {
-	pmPlugin := process.DefaultPlugin
+	pmPlugin := pm.DefaultPlugin
 	example := &PMExample{
 		Log:      logging.ForPlugin(pluginName),
 		PM:       &pmPlugin,
@@ -52,7 +52,7 @@ func main() {
 // PMExample demonstrates the usage of the process manager plugin.
 type PMExample struct {
 	Log logging.PluginLogger
-	PM  process.API
+	PM  pm.ProcessManager
 
 	finished chan struct{}
 }
@@ -94,7 +94,7 @@ func (p *PMExample) simpleExample() error {
 	// via 'Notify()'.
 	cmd := filepath.Join("../", "test-process", "test-process")
 	notifyChan := make(chan status.ProcessStatus)
-	pr := p.PM.NewProcess("test-pr", cmd, process.Args("-max-uptime=60"), process.Notify(notifyChan))
+	pr := p.PM.NewProcess("test-pr", cmd, pm.Args("-max-uptime=60"), pm.Notify(notifyChan))
 
 	// The process is initialized. We can verify that via plugin manager API (prInst == pr)
 	prInst := p.PM.GetProcessByName("test-pr")

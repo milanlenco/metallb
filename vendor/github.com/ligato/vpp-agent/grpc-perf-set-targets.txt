@@ -1,0 +1,242 @@
+BEFORE:
+
+addNodeKey: config/vpp/v2/interfaces/ipsec-10
+iterSources: config/vpp/v2/interfaces/ipsec-10
+SetTargets for config/vpp/v2/interfaces/ipsec-10
+SetTargets for config/vpp/v2/interfaces/ipsec-10 - new target (derived key)
+addEdge: config/vpp/v2/interfaces/ipsec-10-vpp/interface/unnumbered/ipsec-10
+iterTargets: vpp/interface/unnumbered/ipsec-10
+addNodeKey: vpp/interface/unnumbered/ipsec-10
+iterSources: vpp/interface/unnumbered/ipsec-10
+SetTargets for vpp/interface/unnumbered/ipsec-10
+SetTargets for vpp/interface/unnumbered/ipsec-10 - new target (key prefix)
+addEdge: vpp/interface/unnumbered/ipsec-10-vpp/interface/address/red/
+iterTargets: vpp/interface/address/red/
+addNodeKey: config/vpp/v2/route/vrf/0/dst/30.0.0.10/32/gw/172.2.0.1
+iterSources: config/vpp/v2/route/vrf/0/dst/30.0.0.10/32/gw/172.2.0.1
+SetTargets for config/vpp/v2/route/vrf/0/dst/30.0.0.10/32/gw/172.2.0.1
+SetTargets for config/vpp/v2/route/vrf/0/dst/30.0.0.10/32/gw/172.2.0.1 - new target (key)
+addEdge: config/vpp/v2/route/vrf/0/dst/30.0.0.10/32/gw/172.2.0.1-config/vpp/v2/interfaces/ipsec-10
+iterTargets: config/vpp/v2/interfaces/ipsec-10
+
+
+NOW:
+
+addNodeKey: config/vpp/v2/interfaces/ipsec-10
+iterSources: config/vpp/v2/interfaces/ipsec-10
+SetTargets for config/vpp/v2/interfaces/ipsec-10
+SetTargets for config/vpp/v2/interfaces/ipsec-10 - new target (derived key)
+addEdge: config/vpp/v2/interfaces/ipsec-10-vpp/interface/ipsec-10/vrf/from-interface/red
+iterTargets: vpp/interface/ipsec-10/vrf/from-interface/red
+SetTargets for config/vpp/v2/interfaces/ipsec-10 - new target (derived key)
+addEdge: config/vpp/v2/interfaces/ipsec-10-vpp/interface/unnumbered/ipsec-10
+iterTargets: vpp/interface/unnumbered/ipsec-10
+addNodeKey: vpp/interface/ipsec-10/vrf/from-interface/red
+iterSources: vpp/interface/ipsec-10/vrf/from-interface/red
+SetTargets for vpp/interface/ipsec-10/vrf/from-interface/red
+SetTargets for vpp/interface/ipsec-10/vrf/from-interface/red - new target (key prefix)
+addEdge: vpp/interface/ipsec-10/vrf/from-interface/red-vpp/interface/red/vrf/
+iterTargets: vpp/interface/red/vrf/
+addNodeKey: vpp/interface/unnumbered/ipsec-10
+iterSources: vpp/interface/unnumbered/ipsec-10
+SetTargets for vpp/interface/unnumbered/ipsec-10
+SetTargets for vpp/interface/unnumbered/ipsec-10 - new target (key prefix)
+addEdge: vpp/interface/unnumbered/ipsec-10-vpp/interface/ipsec-10/vrf/
+iterTargets: vpp/interface/ipsec-10/vrf/
+SetTargets for vpp/interface/unnumbered/ipsec-10 - new target
+addEdge: vpp/interface/unnumbered/ipsec-10-vpp/interface/red/address/ (key prefix)
+iterTargets: vpp/interface/red/address/
+addNodeKey: config/vpp/v2/route/vrf/0/dst/30.0.0.10/32/gw/172.2.0.1
+iterSources: config/vpp/v2/route/vrf/0/dst/30.0.0.10/32/gw/172.2.0.1
+SetTargets for config/vpp/v2/route/vrf/0/dst/30.0.0.10/32/gw/172.2.0.1
+SetTargets for config/vpp/v2/route/vrf/0/dst/30.0.0.10/32/gw/172.2.0.1 - new target (key)
+addEdge: config/vpp/v2/route/vrf/0/dst/30.0.0.10/32/gw/172.2.0.1-config/vpp/v2/interfaces/ipsec-10
+iterTargets: config/vpp/v2/interfaces/ipsec-10
+
+
+BEFORE (300x): 
+
+"GraphMethods": [
+    {
+      "Name": "SetNode",
+      "Count": 924,
+      "Total": "32.12ms",
+      "Avg": "30µs",
+      "Min": "0s",
+      "Max": "2.21ms"
+    },
+    {
+      "Name": "Node.SetTargets",
+      "Count": 914,
+      "Total": "29.37ms",
+      "Avg": "30µs",
+      "Min": "0s",
+      "Max": "1.75ms"
+    },
+    {
+      "Name": "Node.SetTargets-newTarget",
+      "Count": 902,
+      "Total": "25.07ms",
+      "Avg": "30µs",
+      "Min": "10µs",
+      "Max": "1.74ms"
+    },
+    {
+      "Name": "Release",
+      "Count": 304,
+      "Total": "16.43ms",
+      "Avg": "50µs",
+      "Min": "0s",
+      "Max": "1.14ms"
+    },
+    {
+      "Name": "edgeLookup.addEdge",
+      "Count": 902,
+      "Total": "13.26ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "1.7ms"
+    },
+    {
+      "Name": "edgeLookup.iterSources",
+      "Count": 914,
+      "Total": "12.76ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "1.81ms"
+    },
+    {
+      "Name": "edgeLookup.addNodeKey",
+      "Count": 914,
+      "Total": "8.37ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "230µs"
+    },
+    {
+      "Name": "edgeLookup.iterTargets",
+      "Count": 902,
+      "Total": "5.48ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "230µs"
+    },
+    {
+      "Name": "Save",
+      "Count": 304,
+      "Total": "3.12ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "370µs"
+    },
+    {
+      "Name": "Write",
+      "Count": 304,
+      "Total": "2.25ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "50µs"
+    },
+    {
+      "Name": "GetNodes",
+      "Count": 12,
+      "Total": "40µs",
+      "Avg": "0s",
+      "Min": "0s",
+      "Max": "10µs"
+    }
+  ],
+
+NOW (300x):
+
+"GraphMethods": [
+    {
+      "Name": "Node.SetTargets",
+      "Count": 1220,
+      "Total": "67.18ms",
+      "Avg": "60µs",
+      "Min": "0s",
+      "Max": "4.43ms"
+    },
+    {
+      "Name": "Node.SetTargets-newTarget",
+      "Count": 1806,
+      "Total": "57.23ms",
+      "Avg": "30µs",
+      "Min": "10µs",
+      "Max": "3.42ms"
+    },
+    {
+      "Name": "SetNode",
+      "Count": 1232,
+      "Total": "37.48ms",
+      "Avg": "30µs",
+      "Min": "0s",
+      "Max": "440µs"
+    },
+    {
+      "Name": "edgeLookup.addEdge",
+      "Count": 1806,
+      "Total": "29.89ms",
+      "Avg": "20µs",
+      "Min": "0s",
+      "Max": "2.27ms"
+    },
+    {
+      "Name": "Release",
+      "Count": 304,
+      "Total": "24.07ms",
+      "Avg": "80µs",
+      "Min": "0s",
+      "Max": "2.38ms"
+    },
+    {
+      "Name": "edgeLookup.iterSources",
+      "Count": 1218,
+      "Total": "15.9ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "350µs"
+    },
+    {
+      "Name": "edgeLookup.iterTargets",
+      "Count": 1806,
+      "Total": "11.91ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "190µs"
+    },
+    {
+      "Name": "edgeLookup.addNodeKey",
+      "Count": 1218,
+      "Total": "10.34ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "190µs"
+    },
+    {
+      "Name": "Save",
+      "Count": 304,
+      "Total": "3.7ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "180µs"
+    },
+    {
+      "Name": "Write",
+      "Count": 304,
+      "Total": "2.69ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "580µs"
+    },
+    {
+      "Name": "GetNodes",
+      "Count": 15,
+      "Total": "70µs",
+      "Avg": "0s",
+      "Min": "0s",
+      "Max": "10µs"
+    }
+  ],
+

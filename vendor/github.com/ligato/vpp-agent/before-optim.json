@@ -1,0 +1,510 @@
+{
+  "TxnStats": {
+    "TotalProcessed": 10001,
+    "OperationCount": {
+      "CREATE": 40006,
+      "DELETE": 0,
+      "UPDATE": 0
+    },
+    "ValueStateCount": {
+      "CONFIGURED": 40006,
+      "DISCOVERED": 0,
+      "FAILED": 0,
+      "INVALID": 0,
+      "MISSING": 0,
+      "NONEXISTENT": 0,
+      "OBTAINED": 0,
+      "PENDING": 0,
+      "REMOVED": 0,
+      "RETRYING": 0,
+      "UNIMPLEMENTED": 0
+    },
+    "ErrorCount": 0,
+    "Methods": [
+      {
+        "Name": "processTransaction",
+        "Count": 10001,
+        "Total": "2m36.25498s",
+        "Avg": "15.62ms",
+        "Min": "3.27ms",
+        "Max": "357.46ms"
+      },
+      {
+        "Name": "executeTransaction",
+        "Count": 10001,
+        "Total": "2m34.29068s",
+        "Avg": "15.43ms",
+        "Min": "3.22ms",
+        "Max": "357.17ms"
+      },
+      {
+        "Name": "postProcessTransaction",
+        "Count": 10001,
+        "Total": "574.45ms",
+        "Avg": "60µs",
+        "Min": "10µs",
+        "Max": "18.41ms"
+      },
+      {
+        "Name": "preProcessTransaction",
+        "Count": 10001,
+        "Total": "195.61ms",
+        "Avg": "20µs",
+        "Min": "0s",
+        "Max": "176.73ms"
+      },
+      {
+        "Name": "preRecordTransaction",
+        "Count": 10001,
+        "Total": "99.4ms",
+        "Avg": "10µs",
+        "Min": "0s",
+        "Max": "2.78ms"
+      },
+      {
+        "Name": "recordTransaction",
+        "Count": 10001,
+        "Total": "27.18ms",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "1.12ms"
+      }
+    ]
+  },
+  "GraphMethods": [
+    {
+      "Name": "Node.SetTargets",
+      "Count": 40020,
+      "Total": "33.43655s",
+      "Avg": "840µs",
+      "Min": "0s",
+      "Max": "215.12ms"
+    },
+    {
+      "Name": "edgeLookup.addEdge-III",
+      "Count": 60006,
+      "Total": "30.07463s",
+      "Avg": "500µs",
+      "Min": "0s",
+      "Max": "134.43ms"
+    },
+    {
+      "Name": "SetNode",
+      "Count": 40032,
+      "Total": "5.04835s",
+      "Avg": "130µs",
+      "Min": "0s",
+      "Max": "212.37ms"
+    },
+    {
+      "Name": "edgeLookup.addNodeKey",
+      "Count": 40018,
+      "Total": "3.45899s",
+      "Avg": "90µs",
+      "Min": "0s",
+      "Max": "205.1ms"
+    },
+    {
+      "Name": "edgeLookup.iterSources",
+      "Count": 40018,
+      "Total": "1.13633s",
+      "Avg": "30µs",
+      "Min": "0s",
+      "Max": "23.65ms"
+    },
+    {
+      "Name": "edgeLookup.iterTargets",
+      "Count": 60006,
+      "Total": "1.00292s",
+      "Avg": "20µs",
+      "Min": "0s",
+      "Max": "30.47ms"
+    },
+    {
+      "Name": "edgeLookup.addEdge-I",
+      "Count": 60006,
+      "Total": "700.73ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "26.71ms"
+    },
+    {
+      "Name": "edgeLookup.addEdge-IV",
+      "Count": 60006,
+      "Total": "345.13ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "18.46ms"
+    },
+    {
+      "Name": "Release",
+      "Count": 10004,
+      "Total": "218.18ms",
+      "Avg": "20µs",
+      "Min": "0s",
+      "Max": "11.89ms"
+    },
+    {
+      "Name": "edgeLookup.addEdge-II",
+      "Count": 60006,
+      "Total": "188.07ms",
+      "Avg": "0s",
+      "Min": "0s",
+      "Max": "54.44ms"
+    },
+    {
+      "Name": "Save",
+      "Count": 10004,
+      "Total": "168.41ms",
+      "Avg": "20µs",
+      "Min": "0s",
+      "Max": "11.88ms"
+    },
+    {
+      "Name": "Write",
+      "Count": 10004,
+      "Total": "53.99ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "4.46ms"
+    },
+    {
+      "Name": "GetNodes",
+      "Count": 15,
+      "Total": "40µs",
+      "Avg": "0s",
+      "Min": "0s",
+      "Max": "10µs"
+    }
+  ],
+  "AllDescriptors": [
+    {
+      "Name": "Create",
+      "Count": 40006,
+      "Total": "1m50.51905s",
+      "Avg": "2.76ms",
+      "Min": "0s",
+      "Max": "346.56ms"
+    },
+    {
+      "Name": "Dependencies",
+      "Count": 40016,
+      "Total": "671.79ms",
+      "Avg": "20µs",
+      "Min": "0s",
+      "Max": "32.27ms"
+    },
+    {
+      "Name": "Validate",
+      "Count": 20006,
+      "Total": "284.26ms",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "5.26ms"
+    },
+    {
+      "Name": "DerivedValues",
+      "Count": 10008,
+      "Total": "176.09ms",
+      "Avg": "20µs",
+      "Min": "0s",
+      "Max": "16.35ms"
+    },
+    {
+      "Name": "Retrieve",
+      "Count": 7,
+      "Total": "175.46ms",
+      "Avg": "25.07ms",
+      "Min": "750µs",
+      "Max": "120.91ms"
+    },
+    {
+      "Name": "KeyLabel",
+      "Count": 10005,
+      "Total": "47.79ms",
+      "Avg": "0s",
+      "Min": "0s",
+      "Max": "1.72ms"
+    },
+    {
+      "Name": "ValueComparator",
+      "Count": 12,
+      "Total": "90µs",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "20µs"
+    },
+    {
+      "Name": "UpdateWithRecreate",
+      "Count": 1,
+      "Total": "0s",
+      "Avg": "0s",
+      "Min": "0s",
+      "Max": "0s"
+    }
+  ],
+  "Descriptors": {
+    "bond-interface": [],
+    "vpp-arp": [
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "23.44ms",
+        "Avg": "23.44ms",
+        "Min": "23.44ms",
+        "Max": "23.44ms"
+      }
+    ],
+    "vpp-dhcp": [
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "3.22ms",
+        "Avg": "3.22ms",
+        "Min": "3.22ms",
+        "Max": "3.22ms"
+      }
+    ],
+    "vpp-interface": [
+      {
+        "Name": "Create",
+        "Count": 10002,
+        "Total": "54.1895s",
+        "Avg": "5.42ms",
+        "Min": "1.2ms",
+        "Max": "346.56ms"
+      },
+      {
+        "Name": "DerivedValues",
+        "Count": 10005,
+        "Total": "176.09ms",
+        "Avg": "20µs",
+        "Min": "0s",
+        "Max": "16.35ms"
+      },
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "120.91ms",
+        "Avg": "120.91ms",
+        "Min": "120.91ms",
+        "Max": "120.91ms"
+      },
+      {
+        "Name": "Validate",
+        "Count": 10002,
+        "Total": "73.06ms",
+        "Avg": "10µs",
+        "Min": "0s",
+        "Max": "1.73ms"
+      },
+      {
+        "Name": "KeyLabel",
+        "Count": 10003,
+        "Total": "47.79ms",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "1.72ms"
+      },
+      {
+        "Name": "Dependencies",
+        "Count": 10003,
+        "Total": "44.7ms",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "16.23ms"
+      },
+      {
+        "Name": "ValueComparator",
+        "Count": 1,
+        "Total": "20µs",
+        "Avg": "20µs",
+        "Min": "20µs",
+        "Max": "20µs"
+      },
+      {
+        "Name": "UpdateWithRecreate",
+        "Count": 1,
+        "Total": "0s",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "0s"
+      }
+    ],
+    "vpp-interface-address": [
+      {
+        "Name": "Create",
+        "Count": 2,
+        "Total": "3.25ms",
+        "Avg": "1.63ms",
+        "Min": "1.28ms",
+        "Max": "1.97ms"
+      },
+      {
+        "Name": "Dependencies",
+        "Count": 4,
+        "Total": "20µs",
+        "Avg": "10µs",
+        "Min": "0s",
+        "Max": "10µs"
+      },
+      {
+        "Name": "Validate",
+        "Count": 4,
+        "Total": "20µs",
+        "Avg": "10µs",
+        "Min": "0s",
+        "Max": "10µs"
+      }
+    ],
+    "vpp-interface-vrf": [
+      {
+        "Name": "Create",
+        "Count": 10002,
+        "Total": "207.62ms",
+        "Avg": "20µs",
+        "Min": "0s",
+        "Max": "20.69ms"
+      },
+      {
+        "Name": "Dependencies",
+        "Count": 10002,
+        "Total": "150.59ms",
+        "Avg": "20µs",
+        "Min": "0s",
+        "Max": "16.26ms"
+      }
+    ],
+    "vpp-ip-scan-neighbor": [
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "750µs",
+        "Avg": "750µs",
+        "Min": "750µs",
+        "Max": "750µs"
+      },
+      {
+        "Name": "ValueComparator",
+        "Count": 1,
+        "Total": "20µs",
+        "Avg": "20µs",
+        "Min": "20µs",
+        "Max": "20µs"
+      }
+    ],
+    "vpp-proxy-arp": [
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "5.75ms",
+        "Avg": "5.75ms",
+        "Min": "5.75ms",
+        "Max": "5.75ms"
+      },
+      {
+        "Name": "DerivedValues",
+        "Count": 3,
+        "Total": "10µs",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "0s"
+      },
+      {
+        "Name": "ValueComparator",
+        "Count": 1,
+        "Total": "0s",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "0s"
+      }
+    ],
+    "vpp-proxy-arp-interface": [],
+    "vpp-route": [
+      {
+        "Name": "Create",
+        "Count": 10000,
+        "Total": "30.674s",
+        "Avg": "3.07ms",
+        "Min": "760µs",
+        "Max": "285.09ms"
+      },
+      {
+        "Name": "Dependencies",
+        "Count": 10007,
+        "Total": "332.18ms",
+        "Avg": "30µs",
+        "Min": "0s",
+        "Max": "32.27ms"
+      },
+      {
+        "Name": "Validate",
+        "Count": 10000,
+        "Total": "211.18ms",
+        "Avg": "20µs",
+        "Min": "10µs",
+        "Max": "5.26ms"
+      },
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "14.11ms",
+        "Avg": "14.11ms",
+        "Min": "14.11ms",
+        "Max": "14.11ms"
+      },
+      {
+        "Name": "ValueComparator",
+        "Count": 7,
+        "Total": "40µs",
+        "Avg": "10µs",
+        "Min": "0s",
+        "Max": "10µs"
+      }
+    ],
+    "vpp-unnumbered-interface": [
+      {
+        "Name": "Create",
+        "Count": 10000,
+        "Total": "25.44467s",
+        "Avg": "2.54ms",
+        "Min": "330µs",
+        "Max": "217.99ms"
+      },
+      {
+        "Name": "Dependencies",
+        "Count": 10000,
+        "Total": "144.31ms",
+        "Avg": "10µs",
+        "Min": "0s",
+        "Max": "2.96ms"
+      }
+    ],
+    "vpp-vrf-table": [
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "7.3ms",
+        "Avg": "7.3ms",
+        "Min": "7.3ms",
+        "Max": "7.3ms"
+      },
+      {
+        "Name": "ValueComparator",
+        "Count": 2,
+        "Total": "10µs",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "0s"
+      },
+      {
+        "Name": "KeyLabel",
+        "Count": 2,
+        "Total": "0s",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "0s"
+      }
+    ]
+  }
+}

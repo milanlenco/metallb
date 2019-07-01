@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -26,10 +28,8 @@ import (
 
 	"github.com/ligato/cn-infra/rpc/rest"
 	kvs "github.com/ligato/vpp-agent/plugins/kvscheduler/api"
-	"github.com/ligato/vpp-agent/plugins/kvscheduler/internal/utils"
-	"net/url"
 	"github.com/ligato/vpp-agent/plugins/kvscheduler/internal/graph"
-	"sort"
+	"github.com/ligato/vpp-agent/plugins/kvscheduler/internal/utils"
 )
 
 const (
@@ -79,7 +79,7 @@ const (
 	prefixArg = "prefix"
 
 	// time is the name of the argument used to define point in time for a graph snapshot
-	// to retrieve.
+	// to retrieve. Value = number of nanoseconds since the start of the epoch.
 	timeArg = "time"
 
 	// downstreamResyncURL is URL used to trigger downstream-resync.
@@ -143,7 +143,7 @@ func kvsWithMetaForREST(in []kvs.KVWithMetadata) (out []kvs.KVWithMetadata) {
 // registerHandlers registers all supported REST APIs.
 func (s *Scheduler) registerHandlers(http rest.HTTPHandlers) {
 	if http == nil {
-		s.Log.Warn("No http handler provided, skipping registration of KVScheduler REST handlers")
+		s.Log.Debug("No http handler provided, skipping registration of KVScheduler REST handlers")
 		return
 	}
 	http.RegisterHTTPHandler(txnHistoryURL, s.txnHistoryGetHandler, "GET")
@@ -154,6 +154,7 @@ func (s *Scheduler) registerHandlers(http rest.HTTPHandlers) {
 	http.RegisterHTTPHandler(dumpURL, s.dumpGetHandler, "GET")
 	http.RegisterHTTPHandler(statusURL, s.statusGetHandler, "GET")
 	http.RegisterHTTPHandler(urlPrefix+"graph", s.dotGraphHandler, "GET")
+	http.RegisterHTTPHandler(urlPrefix+"stats", s.statsHandler, "GET")
 }
 
 // txnHistoryGetHandler is the GET handler for "txn-history" API.
@@ -194,7 +195,7 @@ func (s *Scheduler) txnHistoryGetHandler(formatter *render.Render) http.HandlerF
 			if format == formatJSON {
 				s.logError(formatter.JSON(w, http.StatusOK, txn))
 			} else {
-				s.logError(formatter.Text(w, http.StatusOK, txn.StringWithOpts(false, true,0)))
+				s.logError(formatter.Text(w, http.StatusOK, txn.StringWithOpts(false, true, 0)))
 			}
 			return
 		}
@@ -223,7 +224,7 @@ func (s *Scheduler) txnHistoryGetHandler(formatter *render.Render) http.HandlerF
 		if format == formatJSON {
 			s.logError(formatter.JSON(w, http.StatusOK, txnHistory))
 		} else {
-			s.logError(formatter.Text(w, http.StatusOK, txnHistory.StringWithOpts(false, false,0)))
+			s.logError(formatter.Text(w, http.StatusOK, txnHistory.StringWithOpts(false, false, 0)))
 		}
 	}
 }
@@ -233,12 +234,35 @@ func (s *Scheduler) keyTimelineGetHandler(formatter *render.Render) http.Handler
 	return func(w http.ResponseWriter, req *http.Request) {
 		args := req.URL.Query()
 
+		// parse optional *time* argument
+		var timeVal time.Time
+		if timeStr, withTime := args[timeArg]; withTime && len(timeStr) == 1 {
+			var err error
+			timeVal, err = stringToTime(timeStr[0])
+			if err != nil {
+				s.logError(formatter.JSON(w, http.StatusInternalServerError, errorString{err.Error()}))
+				return
+			}
+		}
+
 		// parse mandatory *key* argument
 		if keys, withKey := args[keyArg]; withKey && len(keys) == 1 {
 			graphR := s.graph.Read()
 			defer graphR.Release()
 
 			timeline := graphR.GetNodeTimeline(keys[0])
+			if !timeVal.IsZero() {
+				var nodeRecord *graph.RecordedNode
+				for _, record := range timeline {
+					if record.Since.Before(timeVal) &&
+						(record.Until.IsZero() || record.Until.After(timeVal)) {
+						nodeRecord = record
+						break
+					}
+				}
+				s.logError(formatter.JSON(w, http.StatusOK, nodeRecord))
+				return
+			}
 			s.logError(formatter.JSON(w, http.StatusOK, timeline))
 			return
 		}
@@ -284,7 +308,7 @@ func (s *Scheduler) flagStatsGetHandler(formatter *render.Render) http.HandlerFu
 			graphR := s.graph.Read()
 			defer graphR.Release()
 
-			stats := graphR.GetFlagStats(flags[0], func(key string) bool {
+			stats := graphR.GetFlagStats(flagNameToIndex(flags[0]), func(key string) bool {
 				if len(prefixes) == 0 {
 					return true
 				}
@@ -347,7 +371,9 @@ func parseDumpAndStatusCommonArgs(args url.Values) (descriptor, keyPrefix string
 		err = errors.New("descriptor argument listed more than once")
 		return
 	}
-	descriptor = descriptors[0]
+	if withDescriptor {
+		descriptor = descriptors[0]
+	}
 
 	// parse optional *key-prefix* argument
 	keyPrefixes, withKeyPrefix := args[keyPrefixArg]
@@ -355,7 +381,9 @@ func parseDumpAndStatusCommonArgs(args url.Values) (descriptor, keyPrefix string
 		err = errors.New("key-prefix argument listed more than once")
 		return
 	}
-	keyPrefix = keyPrefixes[0]
+	if withKeyPrefix {
+		keyPrefix = keyPrefixes[0]
+	}
 	return
 }
 
@@ -375,7 +403,7 @@ func (s *Scheduler) dumpGetHandler(formatter *render.Render) http.HandlerFunc {
 			s.txnLock.Lock()
 			defer s.txnLock.Unlock()
 			index := dumpIndex{Views: []string{
-				kvs.SBView.String(), kvs.NBView.String(), kvs.InternalView.String()}}
+				kvs.SBView.String(), kvs.NBView.String(), kvs.CachedView.String()}}
 			for _, descriptor := range s.registry.GetAllDescriptors() {
 				index.Descriptors = append(index.Descriptors, descriptor.Name)
 				index.KeyPrefixes = append(index.KeyPrefixes, descriptor.NBKeyPrefix)
@@ -392,8 +420,8 @@ func (s *Scheduler) dumpGetHandler(formatter *render.Render) http.HandlerFunc {
 				view = kvs.SBView
 			case kvs.NBView.String():
 				view = kvs.NBView
-			case kvs.InternalView.String():
-				view = kvs.InternalView
+			case kvs.CachedView.String():
+				view = kvs.CachedView
 			default:
 				err := errors.New("unrecognized system view")
 				s.logError(formatter.JSON(w, http.StatusInternalServerError, errorString{err.Error()}))
@@ -461,6 +489,12 @@ func (s *Scheduler) statusGetHandler(formatter *render.Render) http.HandlerFunc 
 	}
 }
 
+func (s *Scheduler) statsHandler(formatter *render.Render) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		formatter.JSON(w, http.StatusOK, GetStats())
+	}
+}
+
 // logError logs non-nil errors from JSON formatter
 func (s *Scheduler) logError(err error) {
 	if err != nil {
@@ -470,9 +504,9 @@ func (s *Scheduler) logError(err error) {
 
 // stringToTime converts Unix timestamp from string to time.Time.
 func stringToTime(s string) (time.Time, error) {
-	sec, err := strconv.ParseInt(s, 10, 64)
+	nsec, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return time.Time{}, err
 	}
-	return time.Unix(sec, 0), nil
+	return time.Unix(0, nsec), nil
 }

@@ -17,8 +17,9 @@ package dbadapter
 import (
 	"github.com/ligato/cn-infra/db/keyval"
 
-	"github.com/ligato/vpp-agent/api/models/linux/interfaces"
-	"github.com/ligato/vpp-agent/api/models/linux/l3"
+	linux_interfaces "github.com/ligato/vpp-agent/api/models/linux/interfaces"
+	linux_l3 "github.com/ligato/vpp-agent/api/models/linux/l3"
+	abf "github.com/ligato/vpp-agent/api/models/vpp/abf"
 	acl "github.com/ligato/vpp-agent/api/models/vpp/acl"
 	interfaces "github.com/ligato/vpp-agent/api/models/vpp/interfaces"
 	ipsec "github.com/ligato/vpp-agent/api/models/vpp/ipsec"
@@ -27,9 +28,10 @@ import (
 	nat "github.com/ligato/vpp-agent/api/models/vpp/nat"
 	punt "github.com/ligato/vpp-agent/api/models/vpp/punt"
 	stn "github.com/ligato/vpp-agent/api/models/vpp/stn"
-	"github.com/ligato/vpp-agent/clientv2/linux"
-	"github.com/ligato/vpp-agent/clientv2/vpp"
+	linuxclient "github.com/ligato/vpp-agent/clientv2/linux"
+	vppclient "github.com/ligato/vpp-agent/clientv2/vpp"
 	"github.com/ligato/vpp-agent/clientv2/vpp/dbadapter"
+	"github.com/ligato/vpp-agent/pkg/models"
 )
 
 // NewDataChangeDSL returns a new instance of DataChangeDSL which implements
@@ -107,6 +109,12 @@ func (dsl *PutDSL) ACL(acl *acl.ACL) linuxclient.PutDSL {
 	return dsl
 }
 
+// ABF adds a request to create or update VPP ACL-based forwarding
+func (dsl *PutDSL) ABF(abf *abf.ABF) linuxclient.PutDSL {
+	dsl.vppPut.ABF(abf)
+	return dsl
+}
+
 /*// BfdSession adds a request to create or update VPP bidirectional forwarding
 // detection session.
 func (dsl *PutDSL) BfdSession(val *bfd.SingleHopBFD_Session) linuxclient.PutDSL {
@@ -143,6 +151,12 @@ func (dsl *PutDSL) BDFIB(fib *l2.FIBEntry) linuxclient.PutDSL {
 // XConnect adds a request to create or update VPP Cross Connect.
 func (dsl *PutDSL) XConnect(val *l2.XConnectPair) linuxclient.PutDSL {
 	dsl.vppPut.XConnect(val)
+	return dsl
+}
+
+// VrfTable adds a request to create or update VPP VRF table.
+func (dsl *PutDSL) VrfTable(val *l3.VrfTable) linuxclient.PutDSL {
+	dsl.vppPut.VrfTable(val)
 	return dsl
 }
 
@@ -224,6 +238,12 @@ func (dsl *PutDSL) PuntToHost(val *punt.ToHost) linuxclient.PutDSL {
 	return dsl
 }
 
+// PuntException adds request to create or update exception to punt specific packets.
+func (dsl *PutDSL) PuntException(val *punt.Exception) linuxclient.PutDSL {
+	dsl.parent.txn.Put(models.Key(val), val)
+	return dsl
+}
+
 // Delete changes the DSL mode to allow removal of an existing configuration.
 func (dsl *PutDSL) Delete() linuxclient.DeleteDSL {
 	return &DeleteDSL{dsl.parent, dsl.vppPut.Delete()}
@@ -265,6 +285,12 @@ func (dsl *DeleteDSL) ACL(aclName string) linuxclient.DeleteDSL {
 	return dsl
 }
 
+// ABF adds a request to delete an existing VPP ACL-based forwarding
+func (dsl *DeleteDSL) ABF(abfIndex uint32) linuxclient.DeleteDSL {
+	dsl.vppDelete.ABF(abfIndex)
+	return dsl
+}
+
 /*// BfdSession adds a request to delete an existing VPP bidirectional forwarding
 // detection session.
 func (dsl *DeleteDSL) BfdSession(bfdSessionIfaceName string) linuxclient.DeleteDSL {
@@ -301,6 +327,12 @@ func (dsl *DeleteDSL) BDFIB(bdName string, mac string) linuxclient.DeleteDSL {
 // XConnect adds a request to delete an existing VPP Cross Connect.
 func (dsl *DeleteDSL) XConnect(rxIfaceName string) linuxclient.DeleteDSL {
 	dsl.vppDelete.XConnect(rxIfaceName)
+	return dsl
+}
+
+// VrfTable adds a request to delete existing VPP VRF table.
+func (dsl *DeleteDSL) VrfTable(id uint32, proto l3.VrfTable_Protocol) linuxclient.DeleteDSL {
+	dsl.vppDelete.VrfTable(id, proto)
 	return dsl
 }
 
@@ -380,6 +412,12 @@ func (dsl *DeleteDSL) PuntIPRedirect(l3Proto punt.L3Protocol, txInterface string
 // PuntToHost adds request to delete a rule used to punt L4 traffic to a host.
 func (dsl *DeleteDSL) PuntToHost(l3Proto punt.L3Protocol, l4Proto punt.L4Protocol, port uint32) linuxclient.DeleteDSL {
 	dsl.vppDelete.PuntToHost(l3Proto, l4Proto, port)
+	return dsl
+}
+
+// PuntException adds request to delete exception to punt specific packets.
+func (dsl *DeleteDSL) PuntException(reason string) linuxclient.DeleteDSL {
+	dsl.parent.txn.Delete(punt.ExceptionKey(reason))
 	return dsl
 }
 

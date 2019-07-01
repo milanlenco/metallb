@@ -15,10 +15,11 @@
 package api
 
 import (
-	"errors"
 	"fmt"
-	"github.com/gogo/protobuf/proto"
 	"strings"
+
+	"github.com/gogo/protobuf/proto"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -37,35 +38,40 @@ var (
 	// ErrTxnQueueFull is returned when the queue of pending transactions is full.
 	ErrTxnQueueFull = errors.New("transaction queue is full")
 
-	// ErrUnimplementedAdd is returned when NB transaction attempts to Add value
-	// for which there is a descriptor, but Add operation is not implemented.
-	ErrUnimplementedAdd = errors.New("Add operation is not implemented")
+	// ErrUnimplementedCreate is returned when NB transaction attempts to Create value
+	// for which there is a descriptor, but Create operation is not implemented.
+	ErrUnimplementedCreate = errors.New("operation Create is not implemented")
 
 	// ErrUnimplementedDelete is returned when NB transaction attempts to Delete value
 	// for which there is a descriptor, but Delete operation is not implemented.
-	ErrUnimplementedDelete = errors.New("Delete operation is not implemented")
+	ErrUnimplementedDelete = errors.New("operation Delete is not implemented")
 
-	// ErrUnimplementedModify is returned when NB transaction attempts to Modify value
-	// for which there is a descriptor, but Modify operation is not implemented.
-	ErrUnimplementedModify = errors.New("Modify operation is not implemented")
+	// ErrDescriptorExists is returned when the same descriptor is registered
+	// more than once.
+	ErrDescriptorExists = errors.New("descriptor already exist")
+
+	// ErrEscapedNetNs is returned when a descriptor changes the Linux network
+	// namespace but forgets to revert the change back before returning from the
+	// operation back to the scheduler.
+	ErrEscapedNetNs = errors.New("operation didn't preserve the original network namespace")
 )
 
 // ErrInvalidValueType is returned to scheduler by auto-generated descriptor adapter
 // when value does not match expected type.
 func ErrInvalidValueType(key string, value proto.Message) error {
 	if key == "" {
-		return fmt.Errorf("value (%s) has invalid type", value.String())
+		return errors.Errorf("value (%v) has invalid type", value)
 	}
-	return fmt.Errorf("value (%s) has invalid type for key: %s", value.String(), key)
+	return errors.Errorf("value (%v) has invalid type for key: %s", value, key)
 }
 
 // ErrInvalidMetadataType is returned to scheduler by auto-generated descriptor adapter
 // when value metadata does not match expected type.
 func ErrInvalidMetadataType(key string) error {
 	if key == "" {
-		return errors.New("metadata has invalid type")
+		return errors.Errorf("metadata has invalid type")
 	}
-	return fmt.Errorf("metadata has invalid type for key: %s", key)
+	return errors.Errorf("metadata has invalid type for key: %s", key)
 }
 
 /****************************** Transaction Error *****************************/
@@ -94,10 +100,11 @@ func (e *TransactionError) Error() string {
 	if len(e.kvErrors) > 0 {
 		var kvErrMsgs []string
 		for _, kvError := range e.kvErrors {
-			kvErrMsgs = append(kvErrMsgs,
-				fmt.Sprintf("%s (%v): %v", kvError.Key, kvError.TxnOperation, kvError.Error))
+			kvErrMsgs = append(kvErrMsgs, fmt.Sprintf(
+				"%s (%v): %v", kvError.Key, kvError.TxnOperation, kvError.Error,
+			))
 		}
-		return fmt.Sprintf("failed key-value pairs: [%s]", strings.Join(kvErrMsgs, ", "))
+		return fmt.Sprintf("KeyErrors: [%s]", strings.Join(kvErrMsgs, ", "))
 	}
 	return ""
 }
@@ -132,7 +139,7 @@ type InvalidValueError struct {
 }
 
 // NewInvalidValueError is a constructor for invalid-value error.
-func NewInvalidValueError(err error, invalidFields... string) *InvalidValueError {
+func NewInvalidValueError(err error, invalidFields ...string) *InvalidValueError {
 	return &InvalidValueError{err: err, invalidFields: invalidFields}
 }
 

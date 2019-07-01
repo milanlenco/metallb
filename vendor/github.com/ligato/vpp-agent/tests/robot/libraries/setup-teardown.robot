@@ -25,10 +25,7 @@ Testsuite Setup
     Enable SSH Logging		${OUTPUTDIR}/ssh.log
     Open Connection To Docker Host
     Create Connections For ETCD And Kafka
-    #Start Kafka Server
     Start ETCD Server
-    #Run Keyword If     "${CTL_TOOL}"== "vppctl"     Start VPP Ctl Container
-    Start VPP Ctl Container
     Get Env And SW Version      docker
     Make Datastore Snapshots    startup
 
@@ -37,9 +34,6 @@ Testsuite Teardown
     Make Datastore Snapshots    teardown
     Remove All Nodes
     Stop ETCD Server
-    #Run Keyword If     "${CTL_TOOL}"== "vppctl"     Stop VPP Ctl Container
-    Stop VPP Ctl Container
-    #Stop Kafka Server
     Get Connections
     Close All Connections
     Check Agent Logs For Errors
@@ -48,17 +42,11 @@ Testsuite Teardown
 Test Setup
     Open Connection To Docker Host
     Create Connections For ETCD And Kafka
-    #Start Kafka Server
     Start ETCD Server
-    #Run Keyword If     "${CTL_TOOL}"== "vppctl"     Start VPP Ctl Container
-    Start VPP Ctl Container
     Make Datastore Snapshots    startup
 
 Test Teardown
     Make Datastore Snapshots    teardown
-    #Run Keyword If     "${CTL_TOOL}"== "vppctl"     Stop VPP Ctl Container
-    Stop VPP Ctl Container
-    #Stop Kafka Server
     Stop ETCD Server
     Remove All Nodes
     Get Connections
@@ -130,14 +118,16 @@ Get ETCD Dump
     [Return]            ${out}
 
 Take ETCD Snapshots
-    [Arguments]         ${tag}    ${machine}=docker
-    ${dump}=            Get ETCD Dump    ${machine}
-    Append To File      ${RESULTS_FOLDER}/etcd_dump-${tag}.txt    ${dump}
-    Append To File      ${RESULTS_FOLDER_SUITE}/etcd_dump-${tag}.txt    ${dump}
-    ${errors}=          Get Lines Containing String    ${dump}    /error/
-    ${status}=          Run Keyword And Return Status    Should Be Empty    ${errors}
-    Run Keyword If      ${status}==False         Log     Errors detected in keys: ${errors}    level=WARN
-    
+    [Arguments]            ${tag}    ${machine}=docker
+    ${dump}=               Get ETCD Dump    ${machine}
+    Append To File         ${RESULTS_FOLDER}/etcd_dump-${tag}.txt    ${dump}
+    Append To File         ${RESULTS_FOLDER_SUITE}/etcd_dump-${tag}.txt    ${dump}
+    ${errors}=             Get Lines Containing String    ${dump}    /error/
+    ${errorscount}=        Get Line Count    ${errors}
+    ${nullerrors}=         Get Regexp Matches    ${dump}    /error/.*\nnull\n
+    ${nullerrorscount}=    Get Length    ${nullerrors}
+    Run Keyword If         ${errorscount} > 0 and ${errorscount} != ${nullerrorscount}    Log     Errors detected in keys: ${errors}    level=WARN
+
 Create Next Snapshot Prefix
     ${prefix}=          Evaluate    str(${snapshot_num}).zfill(3)
     ${snapshot_num}=    Evaluate    ${snapshot_num}+1

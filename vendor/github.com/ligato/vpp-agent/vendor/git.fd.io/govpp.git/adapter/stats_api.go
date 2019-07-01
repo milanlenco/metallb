@@ -14,6 +14,10 @@
 
 package adapter
 
+import (
+	"fmt"
+)
+
 // StatsAPI provides connection to VPP stats API.
 type StatsAPI interface {
 	// Connect establishes client connection to the stats API.
@@ -34,11 +38,12 @@ type StatsAPI interface {
 type StatType int
 
 const (
-	_ StatType = iota
-	ScalarIndex
-	SimpleCounterVector
-	CombinedCounterVector
-	ErrorIndex
+	_                     StatType = 0
+	ScalarIndex           StatType = 1
+	SimpleCounterVector   StatType = 2
+	CombinedCounterVector StatType = 3
+	ErrorIndex            StatType = 4
+	NameVector            StatType = 5
 )
 
 func (d StatType) String() string {
@@ -51,8 +56,10 @@ func (d StatType) String() string {
 		return "CombinedCounterVector"
 	case ErrorIndex:
 		return "ErrorIndex"
+	case NameVector:
+		return "NameVector"
 	}
-	return "UnknownStatType"
+	return fmt.Sprintf("UnknownStatType(%d)", d)
 }
 
 // StatEntry represents single stat entry. The type of stat stored in Data
@@ -72,21 +79,27 @@ type CombinedCounter struct {
 	Bytes   Counter
 }
 
+// Name represents string value stored under name vector.
+type Name string
+
 // ScalarStat represents stat for ScalarIndex.
 type ScalarStat float64
 
 // ErrorStat represents stat for ErrorIndex.
-type ErrorStat uint64
+type ErrorStat Counter
 
 // SimpleCounterStat represents stat for SimpleCounterVector.
-// The outer array represents workers and the inner array represents sw_if_index.
-// Values should be aggregated per interface for every worker.
+// The outer array represents workers and the inner array represents interface/node/.. indexes.
+// Values should be aggregated per interface/node for every worker.
 type SimpleCounterStat [][]Counter
 
 // CombinedCounterStat represents stat for CombinedCounterVector.
-// The outer array represents workers and the inner array represents sw_if_index.
-// Values should be aggregated per interface for every worker.
+// The outer array represents workers and the inner array represents interface/node/.. indexes.
+// Values should be aggregated per interface/node for every worker.
 type CombinedCounterStat [][]CombinedCounter
+
+// NameStat represents stat for NameVector.
+type NameStat []Name
 
 // Data represents some type of stat which is usually defined by StatType.
 type Stat interface {
@@ -98,3 +111,4 @@ func (ScalarStat) isStat()          {}
 func (ErrorStat) isStat()           {}
 func (SimpleCounterStat) isStat()   {}
 func (CombinedCounterStat) isStat() {}
+func (NameStat) isStat()            {}

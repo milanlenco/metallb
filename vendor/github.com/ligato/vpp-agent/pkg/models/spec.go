@@ -23,6 +23,7 @@ import (
 	"text/template"
 
 	"github.com/gogo/protobuf/proto"
+
 	api "github.com/ligato/vpp-agent/api/genericmanager"
 )
 
@@ -43,6 +44,9 @@ type registeredModel struct {
 
 	modelOptions
 }
+
+// NameFunc represents function which can name model instance.
+type NameFunc func(obj interface{}) (string, error)
 
 type modelOptions struct {
 	nameTemplate string
@@ -80,10 +84,10 @@ func (m registeredModel) KeyPrefix() string {
 // or returns empty name and valid as false if the key is not valid.
 func (m registeredModel) ParseKey(key string) (name string, valid bool) {
 	name = strings.TrimPrefix(key, m.keyPrefix)
-	if name == key || name == "" {
+	if name == key || (name == "" && m.nameFunc != nil) {
 		name = strings.TrimPrefix(key, m.modelPath)
 	}
-	if name != key && name != "" {
+	if name != key && (name != "" || m.nameFunc == nil) {
 		// TODO: validate name?
 		return name, true
 	}
@@ -104,6 +108,13 @@ func (m registeredModel) StripKeyPrefix(key string) string {
 	return key
 }
 
+func (m registeredModel) name(x proto.Message) (string, error) {
+	if m.nameFunc == nil {
+		return "", nil
+	}
+	return m.nameFunc(x)
+}
+
 var (
 	registeredModels = make(map[string]*registeredModel)
 	modelPaths       = make(map[string]string)
@@ -111,11 +122,36 @@ var (
 	debugRegister = strings.Contains(os.Getenv("DEBUG_MODELS"), "register")
 )
 
+// RegisteredModels returns all registered modules.
+func RegisteredModels() (models []*api.ModelInfo) {
+	for _, s := range registeredModels {
+		models = append(models, &api.ModelInfo{
+			Model: &api.Model{
+				Module:  s.Module,
+				Type:    s.Type,
+				Version: s.Version,
+			},
+			Info: map[string]string{
+				"nameTemplate": s.nameTemplate,
+				"protoName":    s.protoName,
+				"modelPath":    s.modelPath,
+				"keyPrefix":    s.keyPrefix,
+			},
+		})
+	}
+	return
+}
+
 // Register registers the protobuf message with given model specification.
 func Register(pb proto.Message, spec Spec, opts ...ModelOption) *registeredModel {
 	model := &registeredModel{
 		Spec:      spec,
 		protoName: proto.MessageName(pb),
+	}
+
+	// Check proto message name
+	if model.protoName == "" {
+		panic(fmt.Sprintf("empty proto message name for type: %T\n\n\tPlease ensure your .proto file contains: 'option (gogoproto.messagename_all) = true'", pb))
 	}
 
 	// Check duplicate registration
@@ -154,6 +190,10 @@ func Register(pb proto.Message, spec Spec, opts ...ModelOption) *registeredModel
 		opt(&model.modelOptions)
 	}
 
+	if model.nameFunc == nil {
+		model.keyPrefix = strings.TrimSuffix(model.keyPrefix, "/")
+	}
+
 	registeredModels[model.protoName] = model
 	modelPaths[model.modelPath] = model.protoName
 
@@ -172,9 +212,6 @@ type named interface {
 	GetName() string
 }
 
-// NameFunc represents function which can name model instance.
-type NameFunc func(obj interface{}) (string, error)
-
 func NameTemplate(t string) NameFunc {
 	tmpl := template.Must(
 		template.New("name").Funcs(funcMap).Option("missingkey=error").Parse(t),
@@ -189,6 +226,17 @@ func NameTemplate(t string) NameFunc {
 }
 
 var funcMap = template.FuncMap{
+	"protoip": func(s string) string {
+		ip := net.ParseIP(s)
+		if ip == nil {
+			return "<invalid>"
+		}
+
+		if ip.To4() == nil {
+			return "IPv6"
+		}
+		return "IPv4"
+	},
 	"ipnet": func(s string) map[string]interface{} {
 		_, ipNet, _ := net.ParseCIDR(s)
 		maskSize, _ := ipNet.Mask.Size()

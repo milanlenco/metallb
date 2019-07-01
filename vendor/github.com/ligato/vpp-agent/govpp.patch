@@ -1,0 +1,16 @@
+diff --git a/Gopkg.toml b/Gopkg.toml
+index bf1d3d1..2b4921b 100644
+--- a/Gopkg.toml
++++ b/Gopkg.toml
+@@ -16,8 +16,9 @@ required = [
+   name = "github.com/ligato/cn-infra"
+ 
+ [[constraint]]
+-  branch = "master"
+-  name =  "git.fd.io/govpp.git"
++  name = "git.fd.io/govpp.git"
++  source = "github.com/ligato/govpp.git"
++  branch = "vpp1901"
+ 
+ [[constraint]]
+   branch = "master"

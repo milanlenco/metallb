@@ -38,7 +38,6 @@ Configure Environment
 
 Show Interfaces Before Setup
     vpp_term: Show Interfaces    agent_vpp_1
-    Write To Machine    vpp_agent_ctl    vpp-agent-ctl ${AGENT_VPP_ETCD_CONF_PATH} -ps
 
 Setup Interfaces
     etcdctl.Put Veth Interface Via Linux Plugin    node=agent_vpp_1    namespace=ns1    name=ns1_veth1    host_if_name=ns1_veth1_linux    mac=d2:74:8c:12:67:d2    peer=ns2_veth2    ip=${VETH_IP1}     prefix=64
@@ -76,10 +75,10 @@ Check Linux Routes
     Wait Until Keyword Succeeds   ${WAIT_TIMEOUT}   ${SYNC_SLEEP}    Check Removed Linux Route IPv6    node=agent_vpp_1    namespace=ns1    ip=${QUAD9_IP}
 
 Read Route Information From Setup Database
-    etcdctl.Get Linux Route As Json    node=agent_vpp_1    routename=pingingveth2
-    etcdctl.Get Linux Route As Json    node=agent_vpp_1    routename=pingingveth1
-    etcdctl.Get Linux Route As Json    node=agent_vpp_1    routename=pinginggoogl
-    etcdctl.Get Linux Route As Json    node=agent_vpp_1    routename=pinging9
+    etcdctl.Get Linux Route As Json    node=agent_vpp_1    interface=ns1_veth1    ip=${VETH_IP5}    prefix=128    #routename=pingingveth2
+    etcdctl.Get Linux Route As Json    node=agent_vpp_1    interface=ns2_veth2    ip=${VETH_IP6}    prefix=128    #routename=pingingveth1
+    etcdctl.Get Linux Route As Json    node=agent_vpp_1    interface=ns1_veth1    ip=${GOOGLE_IP}    prefix=128    #routename=pinginggoogl
+    etcdctl.Get Linux Route As Json    node=agent_vpp_1    interface=ns2_veth2    ip=${QUAD9_IP}     prefix=128    #routename=pinging9
 
 Change Linux Routes Without Deleting Key (Changing Metric)
     # changing of gateway - this is incorrect/ the record would not be put in the database  - Let us change metric
@@ -90,7 +89,7 @@ Change Linux Routes Without Deleting Key (Changing Metric)
     Wait Until Keyword Succeeds   ${WAIT_TIMEOUT}   ${SYNC_SLEEP}    Check Linux Routes Metric    node=agent_vpp_1    namespace=ns1    ip=${GOOGLE_IP}    metric=55
 
 Change Linux Routes At First Deleting Key And Putting The Same Secondly Deleting Key Then Putting It To Other Namespace
-    etcdctl.Delete Linux Route    node=agent_vpp_1    routename=pinging9
+    etcdctl.Delete Linux Route    node=agent_vpp_1    interface=ns2_veth2    ip=${QUAD9_IP}     prefix=128    #routename=pinging9
 
     Wait Until Keyword Succeeds   ${WAIT_TIMEOUT}   ${SYNC_SLEEP}    Check Removed Linux Route IPv6    node=agent_vpp_1    namespace=ns2    ip=${QUAD9_IP}
 
@@ -100,7 +99,7 @@ Change Linux Routes At First Deleting Key And Putting The Same Secondly Deleting
     Wait Until Keyword Succeeds   ${WAIT_TIMEOUT}   ${SYNC_SLEEP}    Check Linux Routes IPv6    node=agent_vpp_1    namespace=ns2    ip=${QUAD9_IP}
 
     # delete again
-    etcdctl.Delete Linux Route    node=agent_vpp_1    routename=pinging9
+    etcdctl.Delete Linux Route    node=agent_vpp_1    interface=ns2_veth2    ip=${QUAD9_IP}     prefix=128    #routename=pinging9
 
     Wait Until Keyword Succeeds   ${WAIT_TIMEOUT}   ${SYNC_SLEEP}    Check Removed Linux Route IPv6    node=agent_vpp_1    namespace=ns2    ip=${QUAD9_IP}
 

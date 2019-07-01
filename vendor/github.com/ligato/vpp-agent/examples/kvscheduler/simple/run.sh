@@ -1,0 +1,6 @@
+#! /bin/bash
+
+INITIAL_LOGLVL=debug KVSCHEDULER_GRAPHDUMP=1 KVSCHED_VERIFY_MODE=1 KVSCHED_LOG_GRAPH_WALK=1 sudo -E ./simple
+#INITIAL_LOGLVL=debug sudo -E ./simple
+
+

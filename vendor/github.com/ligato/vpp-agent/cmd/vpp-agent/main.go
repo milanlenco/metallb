@@ -18,12 +18,16 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"time"
 
 	"github.com/ligato/cn-infra/agent"
+	"github.com/ligato/cn-infra/datasync/kvdbsync"
+	"github.com/ligato/cn-infra/datasync/resync"
 	"github.com/ligato/cn-infra/logging"
-	log "github.com/ligato/cn-infra/logging/logrus"
-	"github.com/ligato/vpp-agent/cmd/vpp-agent/app/v2"
+
+	"github.com/ligato/vpp-agent/cmd/vpp-agent/app"
 )
 
 const logo = `                                      __
@@ -34,19 +38,68 @@ const logo = `                                      __
 
 `
 
-var vppAgent = appv2.New()
+var (
+	startTimeout = agent.DefaultStartTimeout
+	stopTimeout  = agent.DefaultStopTimeout
+
+	resyncTimeout = time.Second * 10
+)
+
+var debugging func() func()
 
 func main() {
 	fmt.Fprintf(os.Stdout, logo, agent.BuildVersion)
 
-	a := agent.NewAgent(agent.AllPlugins(vppAgent))
+	if debugging != nil {
+		defer debugging()()
+	}
+
+	vppAgent := app.New()
+	a := agent.NewAgent(
+		agent.AllPlugins(vppAgent),
+		agent.StartTimeout(startTimeout),
+		agent.StopTimeout(stopTimeout),
+	)
 
 	if err := a.Run(); err != nil {
-		log.DefaultLogger().Fatal(err)
+		logging.DefaultLogger.Fatal(err)
 	}
 }
 
 func init() {
-	log.DefaultLogger().SetOutput(os.Stdout)
-	log.DefaultLogger().SetLevel(logging.DebugLevel)
+	logging.DefaultLogger.SetOutput(os.Stdout)
+	logging.DefaultLogger.SetLevel(logging.DebugLevel)
+
+	// Overrides for start/stop timeouts of agent
+	if t := os.Getenv("START_TIMEOUT"); t != "" {
+		dur, err := time.ParseDuration(t)
+		if err != nil {
+			log.Fatalf("Invalid duration (%s) for start timeout!", t)
+		} else {
+			log.Printf("setting agent start timeout to: %v (via START_TIMEOUT)", dur)
+			startTimeout = dur
+		}
+	}
+	if t := os.Getenv("STOP_TIMEOUT"); t != "" {
+		dur, err := time.ParseDuration(t)
+		if err != nil {
+			log.Fatalf("Invalid duration (%s) for stop timeout!", t)
+		} else {
+			log.Printf("setting agent stop timeout to: %v (via STOP_TIMEOUT)", dur)
+			stopTimeout = dur
+		}
+	}
+
+	// Override resync timeouts
+	if t := os.Getenv("RESYNC_TIMEOUT"); t != "" {
+		dur, err := time.ParseDuration(t)
+		if err != nil {
+			log.Fatalf("Invalid duration (%s) for resync timeout!", t)
+		} else {
+			log.Printf("setting resync timeout to: %v (via RESYNC_TIMEOUT)", dur)
+			resyncTimeout = dur
+		}
+	}
+	kvdbsync.ResyncDoneTimeout = resyncTimeout
+	resync.SingleResyncAckTimeout = resyncTimeout
 }

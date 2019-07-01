@@ -37,8 +37,8 @@ import (
 	"github.com/ligato/cn-infra/db/keyval/kvproto"
 	cnilogging "github.com/ligato/cn-infra/logging"
 
-	"github.com/ligato/vpp-agent/plugins/restv2/resturl"
-	ifvppcalls "github.com/ligato/vpp-agent/plugins/vppv2/ifplugin/vppcalls"
+	"github.com/ligato/vpp-agent/plugins/restapi/resturl"
+	ifvppcalls "github.com/ligato/vpp-agent/plugins/vpp/ifplugin/vppcalls"
 	"github.com/ligato/vpp-agent/api/models/vpp/l3"
 )
 

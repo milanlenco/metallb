@@ -1,0 +1,605 @@
+{
+  "TxnStats": {
+    "TotalProcessed": 2,
+    "OperationCount": {
+      "CREATE": 22,
+      "DELETE": 2,
+      "UPDATE": 2
+    },
+    "ValueStateCount": {
+      "CONFIGURED": 19,
+      "DISCOVERED": 0,
+      "FAILED": 0,
+      "INVALID": 2,
+      "MISSING": 0,
+      "NONEXISTENT": 0,
+      "OBTAINED": 0,
+      "PENDING": 4,
+      "REMOVED": 1,
+      "RETRYING": 0,
+      "UNIMPLEMENTED": 0
+    },
+    "ErrorCount": 2,
+    "Methods": [
+      {
+        "Name": "processTransaction",
+        "Count": 2,
+        "Total": "546.42ms",
+        "Avg": "273.21ms",
+        "Min": "49.05ms",
+        "Max": "497.37ms"
+      },
+      {
+        "Name": "preProcessTransaction",
+        "Count": 2,
+        "Total": "340.82ms",
+        "Avg": "170.41ms",
+        "Min": "0s",
+        "Max": "340.82ms"
+      },
+      {
+        "Name": "executeTransaction",
+        "Count": 2,
+        "Total": "199.99ms",
+        "Avg": "100ms",
+        "Min": "45.44ms",
+        "Max": "154.56ms"
+      },
+      {
+        "Name": "recordTransaction",
+        "Count": 2,
+        "Total": "3.25ms",
+        "Avg": "1.62ms",
+        "Min": "1.12ms",
+        "Max": "2.13ms"
+      },
+      {
+        "Name": "postProcessTransaction",
+        "Count": 2,
+        "Total": "1.16ms",
+        "Avg": "580µs",
+        "Min": "100µs",
+        "Max": "1.06ms"
+      },
+      {
+        "Name": "preRecordTransaction",
+        "Count": 2,
+        "Total": "660µs",
+        "Avg": "330µs",
+        "Min": "170µs",
+        "Max": "490µs"
+      }
+    ]
+  },
+  "GraphMethods": [
+    {
+      "Name": "SetNode",
+      "Count": 60,
+      "Total": "610µs",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "120µs"
+    },
+    {
+      "Name": "Release",
+      "Count": 5,
+      "Total": "350µs",
+      "Avg": "70µs",
+      "Min": "0s",
+      "Max": "180µs"
+    },
+    {
+      "Name": "Node.SetTargets",
+      "Count": 41,
+      "Total": "340µs",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "70µs"
+    },
+    {
+      "Name": "GetNodes",
+      "Count": 19,
+      "Total": "100µs",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "40µs"
+    },
+    {
+      "Name": "Save",
+      "Count": 5,
+      "Total": "90µs",
+      "Avg": "20µs",
+      "Min": "0s",
+      "Max": "40µs"
+    },
+    {
+      "Name": "DeleteNode",
+      "Count": 1,
+      "Total": "30µs",
+      "Avg": "30µs",
+      "Min": "30µs",
+      "Max": "30µs"
+    },
+    {
+      "Name": "Write",
+      "Count": 5,
+      "Total": "30µs",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "10µs"
+    }
+  ],
+  "AllDescriptors": [
+    {
+      "Name": "Retrieve",
+      "Count": 9,
+      "Total": "338.78ms",
+      "Avg": "37.64ms",
+      "Min": "3.78ms",
+      "Max": "185.37ms"
+    },
+    {
+      "Name": "Create",
+      "Count": 17,
+      "Total": "189.57ms",
+      "Avg": "11.15ms",
+      "Min": "1.11ms",
+      "Max": "66.26ms"
+    },
+    {
+      "Name": "Delete",
+      "Count": 2,
+      "Total": "6.75ms",
+      "Avg": "3.38ms",
+      "Min": "20µs",
+      "Max": "6.74ms"
+    },
+    {
+      "Name": "Dependencies",
+      "Count": 32,
+      "Total": "720µs",
+      "Avg": "20µs",
+      "Min": "0s",
+      "Max": "140µs"
+    },
+    {
+      "Name": "Validate",
+      "Count": 18,
+      "Total": "160µs",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "40µs"
+    },
+    {
+      "Name": "ValueComparator",
+      "Count": 14,
+      "Total": "150µs",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "40µs"
+    },
+    {
+      "Name": "DerivedValues",
+      "Count": 15,
+      "Total": "90µs",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "20µs"
+    },
+    {
+      "Name": "KeyLabel",
+      "Count": 11,
+      "Total": "50µs",
+      "Avg": "0s",
+      "Min": "0s",
+      "Max": "10µs"
+    },
+    {
+      "Name": "UpdateWithRecreate",
+      "Count": 3,
+      "Total": "40µs",
+      "Avg": "10µs",
+      "Min": "0s",
+      "Max": "20µs"
+    },
+    {
+      "Name": "Update",
+      "Count": 1,
+      "Total": "20µs",
+      "Avg": "20µs",
+      "Min": "20µs",
+      "Max": "20µs"
+    }
+  ],
+  "Descriptors": {
+    "bond-interface": [],
+    "vpp-arp": [
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "7.7ms",
+        "Avg": "7.7ms",
+        "Min": "7.7ms",
+        "Max": "7.7ms"
+      }
+    ],
+    "vpp-dhcp": [
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "3.78ms",
+        "Avg": "3.78ms",
+        "Min": "3.78ms",
+        "Max": "3.78ms"
+      }
+    ],
+    "vpp-interface": [
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "185.37ms",
+        "Avg": "185.37ms",
+        "Min": "185.37ms",
+        "Max": "185.37ms"
+      },
+      {
+        "Name": "Create",
+        "Count": 3,
+        "Total": "115.51ms",
+        "Avg": "38.5ms",
+        "Min": "11.4ms",
+        "Max": "66.26ms"
+      },
+      {
+        "Name": "Dependencies",
+        "Count": 6,
+        "Total": "180µs",
+        "Avg": "30µs",
+        "Min": "0s",
+        "Max": "140µs"
+      },
+      {
+        "Name": "DerivedValues",
+        "Count": 9,
+        "Total": "80µs",
+        "Avg": "10µs",
+        "Min": "0s",
+        "Max": "20µs"
+      },
+      {
+        "Name": "ValueComparator",
+        "Count": 2,
+        "Total": "70µs",
+        "Avg": "40µs",
+        "Min": "30µs",
+        "Max": "40µs"
+      },
+      {
+        "Name": "UpdateWithRecreate",
+        "Count": 3,
+        "Total": "40µs",
+        "Avg": "10µs",
+        "Min": "0s",
+        "Max": "20µs"
+      },
+      {
+        "Name": "Validate",
+        "Count": 5,
+        "Total": "30µs",
+        "Avg": "10µs",
+        "Min": "0s",
+        "Max": "10µs"
+      },
+      {
+        "Name": "KeyLabel",
+        "Count": 5,
+        "Total": "20µs",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "10µs"
+      },
+      {
+        "Name": "Update",
+        "Count": 1,
+        "Total": "20µs",
+        "Avg": "20µs",
+        "Min": "20µs",
+        "Max": "20µs"
+      }
+    ],
+    "vpp-interface-address": [
+      {
+        "Name": "Create",
+        "Count": 1,
+        "Total": "2.18ms",
+        "Avg": "2.18ms",
+        "Min": "2.18ms",
+        "Max": "2.18ms"
+      },
+      {
+        "Name": "Validate",
+        "Count": 4,
+        "Total": "50µs",
+        "Avg": "10µs",
+        "Min": "0s",
+        "Max": "20µs"
+      },
+      {
+        "Name": "Dependencies",
+        "Count": 2,
+        "Total": "10µs",
+        "Avg": "10µs",
+        "Min": "10µs",
+        "Max": "10µs"
+      }
+    ],
+    "vpp-interface-vrf": [
+      {
+        "Name": "Create",
+        "Count": 5,
+        "Total": "19.16ms",
+        "Avg": "3.83ms",
+        "Min": "1.49ms",
+        "Max": "9.72ms"
+      },
+      {
+        "Name": "Delete",
+        "Count": 2,
+        "Total": "6.75ms",
+        "Avg": "3.38ms",
+        "Min": "20µs",
+        "Max": "6.74ms"
+      },
+      {
+        "Name": "Dependencies",
+        "Count": 7,
+        "Total": "200µs",
+        "Avg": "30µs",
+        "Min": "10µs",
+        "Max": "40µs"
+      }
+    ],
+    "vpp-ip-scan-neighbor": [
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "8.41ms",
+        "Avg": "8.41ms",
+        "Min": "8.41ms",
+        "Max": "8.41ms"
+      },
+      {
+        "Name": "ValueComparator",
+        "Count": 1,
+        "Total": "20µs",
+        "Avg": "20µs",
+        "Min": "20µs",
+        "Max": "20µs"
+      }
+    ],
+    "vpp-nat44-address": [
+      {
+        "Name": "Create",
+        "Count": 2,
+        "Total": "14.12ms",
+        "Avg": "7.06ms",
+        "Min": "1.92ms",
+        "Max": "12.19ms"
+      },
+      {
+        "Name": "Dependencies",
+        "Count": 2,
+        "Total": "40µs",
+        "Avg": "20µs",
+        "Min": "0s",
+        "Max": "40µs"
+      }
+    ],
+    "vpp-nat44-dnat": [
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "23.75ms",
+        "Avg": "23.75ms",
+        "Min": "23.75ms",
+        "Max": "23.75ms"
+      },
+      {
+        "Name": "Create",
+        "Count": 1,
+        "Total": "3.28ms",
+        "Avg": "3.28ms",
+        "Min": "3.28ms",
+        "Max": "3.28ms"
+      },
+      {
+        "Name": "Dependencies",
+        "Count": 2,
+        "Total": "70µs",
+        "Avg": "30µs",
+        "Min": "30µs",
+        "Max": "40µs"
+      },
+      {
+        "Name": "KeyLabel",
+        "Count": 2,
+        "Total": "10µs",
+        "Avg": "10µs",
+        "Min": "0s",
+        "Max": "10µs"
+      },
+      {
+        "Name": "Validate",
+        "Count": 2,
+        "Total": "10µs",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "0s"
+      }
+    ],
+    "vpp-nat44-global": [
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "57.96ms",
+        "Avg": "57.96ms",
+        "Min": "57.96ms",
+        "Max": "57.96ms"
+      },
+      {
+        "Name": "ValueComparator",
+        "Count": 1,
+        "Total": "10µs",
+        "Avg": "10µs",
+        "Min": "10µs",
+        "Max": "10µs"
+      },
+      {
+        "Name": "DerivedValues",
+        "Count": 3,
+        "Total": "10µs",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "10µs"
+      },
+      {
+        "Name": "Validate",
+        "Count": 1,
+        "Total": "10µs",
+        "Avg": "10µs",
+        "Min": "10µs",
+        "Max": "10µs"
+      }
+    ],
+    "vpp-nat44-interface": [],
+    "vpp-proxy-arp": [
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "5.78ms",
+        "Avg": "5.78ms",
+        "Min": "5.78ms",
+        "Max": "5.78ms"
+      },
+      {
+        "Name": "DerivedValues",
+        "Count": 3,
+        "Total": "10µs",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "0s"
+      },
+      {
+        "Name": "ValueComparator",
+        "Count": 1,
+        "Total": "10µs",
+        "Avg": "10µs",
+        "Min": "10µs",
+        "Max": "10µs"
+      }
+    ],
+    "vpp-proxy-arp-interface": [],
+    "vpp-route": [
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "23.36ms",
+        "Avg": "23.36ms",
+        "Min": "23.36ms",
+        "Max": "23.36ms"
+      },
+      {
+        "Name": "Create",
+        "Count": 2,
+        "Total": "6.98ms",
+        "Avg": "3.49ms",
+        "Min": "1.16ms",
+        "Max": "5.82ms"
+      },
+      {
+        "Name": "Dependencies",
+        "Count": 11,
+        "Total": "190µs",
+        "Avg": "20µs",
+        "Min": "0s",
+        "Max": "50µs"
+      },
+      {
+        "Name": "Validate",
+        "Count": 4,
+        "Total": "60µs",
+        "Avg": "20µs",
+        "Min": "10µs",
+        "Max": "40µs"
+      },
+      {
+        "Name": "ValueComparator",
+        "Count": 7,
+        "Total": "40µs",
+        "Avg": "10µs",
+        "Min": "0s",
+        "Max": "10µs"
+      }
+    ],
+    "vpp-unnumbered-interface": [
+      {
+        "Name": "Create",
+        "Count": 1,
+        "Total": "2.14ms",
+        "Avg": "2.14ms",
+        "Min": "2.14ms",
+        "Max": "2.14ms"
+      },
+      {
+        "Name": "Dependencies",
+        "Count": 2,
+        "Total": "30µs",
+        "Avg": "10µs",
+        "Min": "10µs",
+        "Max": "20µs"
+      }
+    ],
+    "vpp-vrf-table": [
+      {
+        "Name": "Create",
+        "Count": 2,
+        "Total": "26.21ms",
+        "Avg": "13.1ms",
+        "Min": "1.11ms",
+        "Max": "25.09ms"
+      },
+      {
+        "Name": "Retrieve",
+        "Count": 1,
+        "Total": "22.69ms",
+        "Avg": "22.69ms",
+        "Min": "22.69ms",
+        "Max": "22.69ms"
+      },
+      {
+        "Name": "KeyLabel",
+        "Count": 4,
+        "Total": "10µs",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "0s"
+      },
+      {
+        "Name": "Validate",
+        "Count": 2,
+        "Total": "10µs",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "10µs"
+      },
+      {
+        "Name": "ValueComparator",
+        "Count": 2,
+        "Total": "10µs",
+        "Avg": "0s",
+        "Min": "0s",
+        "Max": "0s"
+      }
+    ]
+  }
+}

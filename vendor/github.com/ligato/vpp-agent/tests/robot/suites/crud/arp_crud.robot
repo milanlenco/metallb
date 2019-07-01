@@ -8,7 +8,7 @@ Resource     ../../variables/${VARIABLES}_variables.robot
 
 Resource     ../../libraries/all_libs.robot
 
-Force Tags        crud     IPv4    ExpectedFailure
+Force Tags        crud     IPv4
 Suite Setup       Testsuite Setup
 Suite Teardown    Testsuite Teardown
 Test Setup        TestSetup
@@ -73,7 +73,7 @@ Check Loopback Interface Created
     Wait Until Keyword Succeeds   ${WAIT_TIMEOUT}   ${SYNC_SLEEP}    vat_term: Check Loopback Interface State    agent_vpp_1    vpp1_loop1    enabled=1     mac=12:21:21:11:11:11    mtu=1400  ipv4=20.20.1.1/24
 
 Add Tap Interface
-    Put TAP Interface With IP    node=agent_vpp_1    name=vpp1_tap1    mac=32:21:21:11:11:11    ip=30.30.1.1   prefix=24      host_if_name=linux_vpp1_tap1
+    Put TAPv2 Interface With IP    node=agent_vpp_1    name=vpp1_tap1    mac=32:21:21:11:11:11    ip=30.30.1.1   prefix=24      host_if_name=linux_vpp1_tap1
 
 Check TAP Interface Created
     vpp_term: Interface Is Created    node=agent_vpp_1    mac=32:21:21:11:11:11
@@ -135,8 +135,8 @@ Check Veth1 Veth2 Are Created After Afpacket is created
     Wait Until Keyword Succeeds   ${WAIT_TIMEOUT}   ${SYNC_SLEEP}    linux: Check Veth Interface State     agent_vpp_1    vpp1_veth2    mac=${VETH2_MAC}    state=up
 
 Add ARP for Afpacket
-    Put ARP    agent_vpp_1    vpp1_afpacket1    155.155.155.155   32:51:51:51:51:51    False
-    Put ARP    agent_vpp_1    vpp1_afpacket1    155.155.155.150   32:51:51:51:51:05    False
+    Put ARP    agent_vpp_1    vpp1_afpacket1    155.155.155.155   32:51:51:51:51:51    false
+    Put ARP    agent_vpp_1    vpp1_afpacket1    155.155.155.150   32:51:51:51:51:05    false
 
 Check Afpacket ARP
     Wait Until Keyword Succeeds   ${WAIT_TIMEOUT}   ${SYNC_SLEEP}    vpp_term: Check ARP    agent_vpp_1    vpp1_afpacket1    155.155.155.155   32:51:51:51:51:51    True
@@ -150,6 +150,7 @@ Delete ARPs
     Delete ARP    agent_vpp_1    vpp1_loop1    155.155.155.152
     Delete ARP    agent_vpp_1    vpp1_tap1    155.155.155.150
     Delete ARP    agent_vpp_1    host-vpp1_veth2    155.155.155.150
+    Delete ARP    agent_vpp_1    vpp1_afpacket1    155.155.155.150
     vpp_term:Show ARP   agent_vpp_1
     Execute In Container    agent_vpp_1    ip neigh
     Sleep    ${SYNC_SLEEP}
@@ -196,7 +197,8 @@ Modify ARPs
     vpp_term:Show ARP   agent_vpp_1
     Put ARP    agent_vpp_1    vpp1_tap1    155.155.155.155   32:51:51:51:51:58    false
     vpp_term:Show ARP   agent_vpp_1
-    Put ARP    agent_vpp_1    host-vpp1_veth2    155.155.155.155   32:51:51:51:51:58    False
+    Put ARP    agent_vpp_1    host-vpp1_veth2    155.155.155.155   32:51:51:51:51:58    false
+    Put ARP    agent_vpp_1    vpp1_afpacket1    155.155.155.155   32:51:51:51:51:58    false
 
 
 Check Memif ARP After Modify
